@@ -12,4 +12,7 @@ class pure::params
     '3' => '9.5',
     '4' => '9.6'    
   }  
+
+  $pg_etc_dir           = "/etc/pgpure/postgres/$pg_version/data"
+
 }
