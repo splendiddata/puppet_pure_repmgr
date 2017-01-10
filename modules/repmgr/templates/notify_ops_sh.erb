@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# This script emails a list of addresses whenever an event occurs.
+#
+# The list of events which trigger an email is governed by the 'event_notifications'
+# variable in repmgr.conf.
+#
+# The following details are pass governed by theto this script, in the order listed.
+# variable in repmgr.conf
+#
+#   %n - node ID
+#   %e - event type
+#   %s - success (1 or 0)
+#   %t - timestamp
+#   %d - details
+
+recipients=( <%= @notify_email %> )
+
+node=$1
+event_type=$2
+
+if [[ "$3" == "1" ]]; then
+  result="Success"
+elif [[ "$3" == "0" ]]; then
+  result="Failure"
+else
+  result="Unknown"
+fi
+
+timestamp=$4
+details=$5
+
+PATH="$PATH:/usr/bin"
+mailx=$(which mailx) || { echo "mailx not found. Exiting."; exit 1; }
+
+for r in ${recipients[@]}; do
+  echo "$timestamp -- $details" | $mailx -s "$event_type on <%= @node_name %>; Result: ${result}. $timestamp" $r
+done

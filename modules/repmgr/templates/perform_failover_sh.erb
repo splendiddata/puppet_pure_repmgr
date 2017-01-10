@@ -1,0 +1,49 @@
+#!/bin/bash
+
+## PUPPET MANAGED ##
+
+# This script relies on the 'real_primary' custom fact, and on profile::vcli_01
+# for it's STONITH capability.
+
+# Find the most appropriate facter binary, and exit if we can't find one at all,
+# as we can't guarantee we'd be killing the right node without it.
+if [[ -x '/opt/puppetlabs/bin/facter' ]]; then
+  facter='/opt/puppetlabs/bin/facter'
+else
+  facter=$(which facter)
+fi
+
+if [[ -z "$facter" ]]; then
+  echo "$(date '+%Y-%m-%d %T') $(basename $0) Cannot find a facter binary. Exiting for safety"
+  exit 1
+fi
+
+# Find kill-vm wrapper script, and exit if not found as we cannot do STONITH.
+kill_vm=$(which kill-vm)
+if [[ -z "$kill_vm" ]]; then
+  echo "$(date '+%Y-%m-%d %T') $(basename $0) Cannot find kill-vm script. Is vcli installed? Exiting"
+  exit 1
+fi
+
+# Find the current primary for this node. Exit if none found.
+primary=$(sudo $facter -p real_primary)
+if [[ -z "$primary" ]]; then
+  echo "$(date '+%Y-%m-%d %T') $(basename $0) No acceptable value for real_primary found. Exiting for safety"
+  exit 1
+fi
+
+# Attempt to promote this node to new primary.
+repmgr -f <%= @repmgr_conf_dir %>/repmgr.conf --verbose standby promote \
+|| { echo "$(date '+%Y-%m-%d %T') $(basename $0) Promote failed. Exiting"; exit 1; }
+
+# Attempt to stop and disable postgresql on the old primary.
+#ssh -t $primary 'sudo /etc/init.d/postgresql stop ; sudo update-rc.d postgresql disable' \
+#|| { echo "$(date '+%Y-%m-%d %T') $(basename $0) Unable to ssh to primary to stop and disable postgresql"; exit 1; }
+
+# Attempt to append firewall rule blocking incoming postgresql requests on the old primary.
+#ssh -t $primary 'sudo iptables -A INPUT -p tcp --dport 5432 -j DROP' \
+#|| { echo "$(date '+%Y-%m-%d %T') $(basename $0) Unable to ssh to primary to append firewall rule"; exit 1; }
+
+# Use vcli to STONITH old primary.
+$kill_vm <%= @vc_server %> $primary poweroff \
+|| { echo "$(date '+%Y-%m-%d %T') $(basename $0) kill-vm failed. VMware STONITH did not work. Exiting"; exit 1; }

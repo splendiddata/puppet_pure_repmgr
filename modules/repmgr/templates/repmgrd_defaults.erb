@@ -1,0 +1,23 @@
+## PUPPET MANAGED ##
+
+# default settings for repmgrd. This file is source by /bin/sh from
+# /etc/init.d/repmgrd
+
+# disable repmgrd by default so it won't get started upon installation
+# valid values: yes/no
+REPMGRD_ENABLED=yes
+
+# configuration file (required)
+REPMGRD_CONF=<%= @repmgr_conf_dir %>/repmgr.conf
+
+# additional options
+REPMGRD_OPTS="--monitoring-history"
+
+# user to run repmgrd as
+REPMGRD_USER=<%= @postgresql_user %>
+
+# repmgrd binary
+REPMGR_BIN=/usr/bin/repmgr
+
+# pid file
+REPMGR_PIDFILE=/var/run/repmgrd.pid
