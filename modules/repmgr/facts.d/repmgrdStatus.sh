@@ -2,7 +2,7 @@
 
 # Returns 'running', 'stopped', or 'unknown'.
 
-if [[ -z "$(which repmgr)" ]] || [[ ! -x '/etc/init.d/postgresql' ]]; then
+if [[ -z "$(which repmgr 2>/dev/null)" ]] || [[ ! -x '/etc/init.d/postgresql' ]]; then
   echo 'repmgrd_status=unknown'
   exit 0
 fi
