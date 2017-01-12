@@ -17,3 +17,4 @@ class pure::params
   $pg_data_dir          = "/var/pgpure/postgres/$pg_version/data"
 
 }
+

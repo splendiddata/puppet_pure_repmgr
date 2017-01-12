@@ -25,3 +25,4 @@ class pure::repo
     }
 
 }
+

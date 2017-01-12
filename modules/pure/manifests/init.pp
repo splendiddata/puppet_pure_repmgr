@@ -18,4 +18,6 @@ class pure
    class { 'pure::postgresql':
       pg_version        => $pure::params::pg_version
    }
+
 }
+
