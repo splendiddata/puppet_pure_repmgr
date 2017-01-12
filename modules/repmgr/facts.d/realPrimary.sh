@@ -11,7 +11,7 @@
 cd /tmp \
 || { echo 'Unable to cd to /tmp. Exiting.'; exit 0; }
 
-locate_cmd=$(which locate) \
+locate_cmd=$(which locate 2>/dev/null) \
 || { echo 'locate command not available. Exiting.'; exit 0; }
 
 repmgrConfFile=$($locate_cmd repmgr.conf | grep -v sample)
