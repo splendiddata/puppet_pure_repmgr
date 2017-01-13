@@ -4,4 +4,6 @@ node default {
       do_initdb => false,
    }
 
+   class { 'pure_repmgr':
+   }
 }
