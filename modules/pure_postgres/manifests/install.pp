@@ -1,9 +1,10 @@
-# == Class: pure_postgres::postgresql
+# == Class: pure_postgres::install
 #
 # Installs postgres from pure repo in a bare format (without running initdb on /var/pgpure/postgres/9.6/data)
-class pure_postgres::postgresql
+class pure_postgres::install
 (
   $pg_version           = $pure_postgres::params::version,
+  $do_initdb            = $pure_postgres::params::do_initdb,
 ) inherits pure_postgres::params
 {
    $pg_package_name     = "postgres-${pg_version}"
