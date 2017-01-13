@@ -1,5 +1,5 @@
-# == Class pure::params
-class pure::params
+# == Class pure_postgres::params
+class pure_postgres::params
 {
   $repo                 = 'http://base.splendiddata.com/postgrespure'
   $version              = '4'

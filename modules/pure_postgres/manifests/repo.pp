@@ -1,13 +1,13 @@
-# == Class: pure::repo
+# == Class: pure_postgres::repo
 #
-# Installs purerepo from rpm on url
-class pure::repo
+# Installs pure repo
+class pure_postgres::repo
 (
-  $repo              = $pure::params::repo,
-  $version           = $pure::params::version,
-  $package_name      = $pure::params::package_name,
-  $package_version   = $pure::params::package_version
-) inherits pure::params
+  $repo              = $pure_postgres::params::repo,
+  $version           = $pure_postgres::params::version,
+  $package_name      = $pure_postgres::params::package_name,
+  $package_version   = $pure_postgres::params::package_version
+) inherits pure_postgres::params
 {
   $dist              = $::operatingsystem ?
   {
