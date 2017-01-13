@@ -1,0 +1,15 @@
+max_wal_senders = 10
+#We use 5 in our manual setup
+
+wal_level = replica
+#wal_keep_segments = {{wal_keep_segments}}
+#In 9.6 we can use 'replication slots'
+
+#a replication slots per standby and one for barman (will most certainly use it)
+max_replication_slots = {{play_hosts|length}}
+
+hot_standby = on
+#Already on by manual setup of HA, but...
+
+#Required by pg_rewind
+wal_log_hints = on

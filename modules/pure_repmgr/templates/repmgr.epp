@@ -1,0 +1,7 @@
+#Use lower case for cluster name, since this is part of the schema that remgr keeps his cluster info in.
+cluster=<%= $facts[fqdn] %>
+node=<%= $facts[repmgr_id] %>
+node_name=<%= $facts[hostname] %>
+conninfo='host=<%= $facts[hostname] %> user=repmgr dbname=repmgr'
+use_replication_slots=1
+pg_bindir=/usr/pgpure/postgres/current/bin/
