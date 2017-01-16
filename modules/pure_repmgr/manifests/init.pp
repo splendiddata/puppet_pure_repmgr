@@ -12,8 +12,6 @@ class pure_repmgr
    }
 
    class { 'pure_repmgr::config':
-      primarynetwork      => $primarynetwork,
-      dnsname             => $dnsname,
    }
 
 }

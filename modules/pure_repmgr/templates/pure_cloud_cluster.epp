@@ -1,3 +1,4 @@
 [pgpure_cloud_config]
-primarynetwork=<%= $primarynetwork %>
-dnsname=<%= $dnsname %>
+primarynetwork=<%= $pure_repmgr::primarynetwork %>
+dnsname=<%= $pure_repmgr::dnsname %>
+

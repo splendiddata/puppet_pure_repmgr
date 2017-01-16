@@ -3,8 +3,6 @@
 # Configure a replicated cluster with repmgr from pure repo 
 class pure_repmgr::config
 (
-  $primarynetwork          = undef,
-  $dnsname                 = undef,
 ) inherits pure_repmgr::params
 {
    file { [  '/etc/facter', '/etc/facter/facts.d' ]:
@@ -16,10 +14,10 @@ class pure_repmgr::config
 
    file { '/etc/facter/facts.d/pure_cloud_cluster.ini':
       ensure  => file,
-      content => epp('pure_repmgr/pure_cloud_cluster.epp', {'primarynetwork' => $primarynetwork, 'dnsname' => $dnsname}),
+      content => epp('pure_repmgr/pure_cloud_cluster.epp'),
       owner                => 'root',
       group                => 'root',
-      mode                 => '0750',
+      mode                 => '0640',
       require              => File['/etc/facter/facts.d']
    }
 
