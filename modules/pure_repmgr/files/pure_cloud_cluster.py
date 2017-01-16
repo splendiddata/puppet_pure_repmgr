@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
   try:
     config=ConfigParser.ConfigParser()
-    config.readfp(open('/etc/sysconfig/pure_cloud_cluster.ini'))
+    config.readfp(open('/etc/facter/facts.d/pure_cloud_cluster.ini'))
   except:
     pass
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
   except:
     defaultprimarynetwork=None
   try:
-    defaultdns=config.get('pgpure_cloud_config', 'name')
+    defaultdns=config.get('pgpure_cloud_config', 'dnsname')
   except:
     defaultdns=None
 
@@ -83,11 +83,13 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   if not args.name:
-    print('You should set the DNS of this cluster with --name, or in inifile /etc/sysconfig/pure_cloud_cluster.ini')
+    print('You should set the DNS of this cluster with --name, or in inifile /etc/facter/facts.d/pure_cloud_cluster.ini')
     sys.exit()
   if '/' not in args.primarynetwork:
-    print('Invalid --primarynetwork. \nShould be: IP/CIDR (e.a. 1.2.3.4/16). \nSet it in /etc/sysconfig/pure_cloud_cluster.ini or with --primarynetwork.')
+    print('Invalid --primarynetwork. \nShould be: IP/CIDR (e.a. 1.2.3.4/16). \nSet it in /etc/facter/facts.d/pure_cloud_cluster.ini or with --primarynetwork.')
     sys.exit()
+
+  repmgr_cluster_name = args.name.split('.')[0]
 
   if not '.' in args.name:
     try:
@@ -126,11 +128,15 @@ if __name__ == "__main__":
   initialmaster=int_to_ip(primary_site[0])
   primary_site = [ int_to_ip(IP) for IP in primary_site ]
   secondary_site = [ int_to_ip(IP) for IP in sorted(secondary_site) ]
+  all_sites = primary_site + secondary_site
+  my_ip = socket.gethostbyname(socket.gethostname())
+  my_id = all_sites.index(my_ip) + 1
 
   facts = dict()
   facts['pure_cloud_dns'] = dns
+  facts['pure_cloud_repmgr_cluster'] = repmgr_cluster_name
   facts['pure_cloud_primarysite'] = primary_site
   facts['pure_cloud_secondarysite'] = secondary_site
-  facts['pure_cloud_initialmaster'] = initialmaster
+  facts['pure_cloud_my_id'] = my_id
 
   print(json.dumps(facts))
