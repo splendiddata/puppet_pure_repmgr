@@ -77,6 +77,7 @@ def process_config_files(list_of_config_files):
 if __name__ == "__main__":
     import sys
     import json
+    import os
 
     settings = process_config_files([ '/etc/repmgr.conf', '/etc/facter/facts.d/pure_cloud_cluster.ini' ])
 
@@ -162,5 +163,6 @@ if __name__ == "__main__":
     facts['pure_cloud_nodeid'] = my_id
     facts['pure_cloud_primarysite'] = primary_site
     facts['pure_cloud_secondarysite'] = secondary_site
+    facts['pure_cloud_isempty'] = not os.path.exists('/var/pgpure/postgres/9.6/data/PG_VERSION')
 
     print(json.dumps(facts))
