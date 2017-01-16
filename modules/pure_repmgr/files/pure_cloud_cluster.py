@@ -156,10 +156,11 @@ if __name__ == "__main__":
         my_id = all_sites.index(my_ip) + 1
 
     facts = dict()
-    facts['pure_cloud_dns'] = dns
     facts['pure_cloud_cluster'] = repmgr_cluster_name
+    facts['pure_cloud_clusterdns'] = dns
+    facts['pure_cloud_nodes'] = primary_site + secondary_site
+    facts['pure_cloud_nodeid'] = my_id
     facts['pure_cloud_primarysite'] = primary_site
     facts['pure_cloud_secondarysite'] = secondary_site
-    facts['pure_cloud_nodeid'] = my_id
 
     print(json.dumps(facts))
