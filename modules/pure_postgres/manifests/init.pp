@@ -17,7 +17,7 @@ class pure_postgres
       package_version   => $package_version,
    }
    class { 'pure_postgres::install':
-      pg_version        => $pure_postgres::params::pg_version,
+      pg_version        => $pg_version,
       do_initdb         => $do_initdb,
    }
 

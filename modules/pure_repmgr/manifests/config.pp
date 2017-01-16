@@ -3,7 +3,7 @@
 # Configure a replicated cluster with repmgr from pure repo 
 class pure_repmgr::config
 (
-) inherits pure_repmgr
+) inherits pure_repmgr::params
 {
    file { [  '/etc/facter', '/etc/facter/facts.d' ]:
       ensure               => 'directory',
@@ -32,7 +32,9 @@ class pure_repmgr::config
       require              => File['/etc/facter/facts.d/pure_cloud_cluster.ini'],
    }
 
-   if $facts['pure_cloud_isempty'] {
+#   if $facts['pure_cloud_isempty'] {
+   if $facts['pure_cloud_nodeid'] {
+
       file { '/etc/repmgr.conf':
          ensure  => file,
          content => epp('pure_repmgr/repmgr.epp'),
@@ -42,13 +44,13 @@ class pure_repmgr::config
          replace              => false,
       }
 
-      file { "$pure_postgres::pg_etc_dir/conf.d/wal.conf":
+      file { "${pure_postgres::pg_etc_dir}/conf.d/wal.conf":
          ensure  => file,
          content => epp('pure_repmgr/wal.epp'),
          owner                => 'postgres',
          group                => 'postgres',
          mode                 => '0640',
-         require              => File["$pure_postgres::pg_etc_dir/conf.d"],
+         require              => File["${pure_postgres::pg_etc_dir}/conf.d"],
          replace              => false,
       }
 
@@ -56,6 +58,18 @@ class pure_repmgr::config
          path => "$pure_postgres::pg_etc_dir/conf.d/wal.conf",  
          line => 'wal_log_hints = on',
       }
+
+#      postgresql::server::pg_hba_rule { 'allow repmgr connections':
+#         type                 => 'host',
+#         database             => 'repmgr',
+#         user                 => 'repmgr',
+#         auth_method          => 'trust',
+#         address              => $facts['pure_cloud_nodes'],
+#         description          => 'Needed for repmgr',
+#         order                => '150',
+#         target               => '/var/pgpure/postgres/9.6/data/pg_hba.conf',
+#         postgresql_version   => '9.6',
+#      }
    }
 }
 
