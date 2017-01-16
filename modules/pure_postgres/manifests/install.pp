@@ -9,32 +9,33 @@ class pure_postgres::install
 {
    $pg_package_name     = "postgres-${pg_version}"
 
-   #Doing this before installing rpm prevents initdb in rpm,
-   #which helps in idempotency state detection of new cluster.
+   if !$do_initdb {
+      #Doing this before installing rpm prevents initdb in rpm,
+      #which helps in idempotency state detection of new cluster.
 
-   group { 'pgpure':
-      ensure               => present,
-   }
+      group { 'pgpure':
+         ensure               => present,
+      }
 
-   user { 'postgres':
-      ensure               => present,
-      comment              => "postgres server",
-      groups               => "pgpure",
-      home                 => "/home/postgres",
-      managehome           => true,
-      shell                => '/bin/bash',
-      system               => true,
-   }
+      user { 'postgres':
+         ensure               => present,
+         comment              => "postgres server",
+         groups               => "pgpure",
+         home                 => "/home/postgres",
+         managehome           => true,
+         shell                => '/bin/bash',
+         system               => true,
+      }
 
-   file { [  '/var/pgpure', '/var/pgpure/postgres',
+      file { [  '/var/pgpure', '/var/pgpure/postgres',
             "/var/pgpure/postgres/$pg_version", "/var/pgpure/postgres/$pg_version/data" ]:
-      ensure               => 'directory',
-      owner                => 'postgres',
-      group                => 'postgres',
-      mode                 => '0700',
-   }
+         ensure               => 'directory',
+         owner                => 'postgres',
+         group                => 'postgres',
+         mode                 => '0700',
+      }
 
-   #End of doing stuff before RPM to prevent initdb in RPM...
+   }
 
    package { $pg_package_name:
       ensure => 'installed',

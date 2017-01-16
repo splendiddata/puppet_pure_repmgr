@@ -3,7 +3,7 @@
 # Configure a replicated cluster with repmgr from pure repo 
 class pure_repmgr::config
 (
-) inherits pure_repmgr::params
+) inherits pure_repmgr
 {
    file { [  '/etc/facter', '/etc/facter/facts.d' ]:
       ensure               => 'directory',
