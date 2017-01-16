@@ -18,7 +18,8 @@ class pure_repmgr::config
       owner                => 'root',
       group                => 'root',
       mode                 => '0640',
-      require              => File['/etc/facter/facts.d']
+      require              => File['/etc/facter/facts.d'],
+      replace              =>  false,
    }
 
    file { 'pure_cloud_cluster.py':
@@ -28,9 +29,32 @@ class pure_repmgr::config
       owner                => 'root',
       group                => 'root',
       mode                 => '0750',
-      require              => File['/etc/facter/facts.d/pure_cloud_cluster.ini']
+      require              => File['/etc/facter/facts.d/pure_cloud_cluster.ini'],
    }
 
+   file { '/etc/repmgr.conf':
+      ensure  => file,
+      content => epp('pure_repmgr/repmgr.epp'),
+      owner                => 'postgres',
+      group                => 'postgres',
+      mode                 => '0640',
+      replace              => false,
+   }
+
+   file { "$pure_postgres::pg_etc_dir/conf.d/wal.conf":
+      ensure  => file,
+      content => epp('pure_repmgr/wal.epp'),
+      owner                => 'postgres',
+      group                => 'postgres',
+      mode                 => '0640',
+      require              => File["$pure_postgres::pg_etc_dir/conf.d"],
+      replace              => false,
+   }
+
+   file_line { 'wal_log_hints on':
+      path => "$pure_postgres::pg_etc_dir/conf.d/wal.conf",  
+      line => 'wal_log_hints = on',
+   }
 
 }
 
