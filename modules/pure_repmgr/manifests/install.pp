@@ -7,16 +7,23 @@ class pure_repmgr::install
 {
 
    if $facts['pure_cloud_nodeid'] {
+      include pure_postgres
+
+      class { 'pure_postgres::repo':
+         repo => 'http://base.dev.splendiddata.com/postgrespure',
+      }
+
       if $facts['pure_cloud_nodeid'] == "1" {
-         $do_initdb = true
+         class { 'pure_postgres::install':
+            pg_version => '9.6',
+            do_initdb  => true,
+         }
       }
       else {
-         $do_initdb = false
-      }
-      
-      class { 'pure_postgres':
-         repo => 'http://base.dev.splendiddata.com/postgrespure',
-         do_initdb => $do_initdb,
+         class { 'pure_postgres::install':
+            pg_version => '9.6',
+            do_initdb  => false,
+         }
       }
 
       package { 'repmgr':

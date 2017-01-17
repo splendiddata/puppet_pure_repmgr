@@ -57,16 +57,16 @@ class pure_repmgr::config
          line => 'wal_log_hints = on',
       }
 
-      class { 'pure_postgres::pg_hba':   
-         database        => 'repmgr',
-         method          => 'trust',
-         netmask         => '255.255.255.255',
-         state           => 'present',
-         sources         => $facts['pure_cloud_nodes'],
-         connection_type => 'host',
-         user            => 'repmgr',
+      $facts['pure_cloud_nodes'].each | String $source | {
+         pure_postgres::pg_hba {"pg_hba entry for $source":   
+            database        => 'repmgr',
+            method          => 'trust',
+            state           => 'present',
+            source          => "${source}/32",
+            connection_type => 'host',
+            user            => 'repmgr',
+         }
       }
-
    }
 }
 

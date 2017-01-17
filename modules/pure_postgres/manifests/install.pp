@@ -5,7 +5,7 @@ class pure_postgres::install
 (
   $pg_version           = $pure_postgres::params::version,
   $do_initdb            = $pure_postgres::params::do_initdb,
-) inherits pure_postgres::params
+) inherits pure_postgres
 {
    $pg_package_name     = "postgres-${pg_version}"
 
@@ -39,6 +39,9 @@ class pure_postgres::install
 
    package { $pg_package_name:
       ensure => 'installed',
+   }
+
+   class { 'pure_postgres::config':
    }
 
 }
