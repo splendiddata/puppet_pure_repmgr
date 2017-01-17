@@ -411,33 +411,36 @@ class PgHba(object):
         fileh.write(self.render())
         fileh.close()
 
-    def new_rule(self, contype, databases, users, source, netmask, method, options):
+    def new_rules(self, contype, databases, users, source, netmask, method, options):
         if method not in PgHbaMethods:
             raise PgHbaError("invalid method {0} (should be one of '{1}').".format(method, "', '".join(PgHbaMethods)))
         if contype not in PgHbaTypes:
             raise PgHbaError("invalid connection type {0} (should be one of '{1}').".format(contype, "', '".join(PgHbaTypes)))
-        # Add the job
-        rule = dict(zip(PgHbaHDR, [contype, databases, users, source, netmask, method, options]))
 
-        if contype == 'local':
-            del rule['src']
-            del rule['mask']
-        elif '/' in source:
-            del rule['mask']
-        elif ipv4_re.search(source):
-            if not netmask:
-                rule['src'] += '/32'
-        elif '/' in source:
-            if not netmask:
-                rule['src'] += '/128'
-        else:
-            del rule['mask']
+        for db in databases.split(','):
+            for usr in users.split(','):
 
-        self.cleanEmptyRuleKeys(rule)
+                rule = dict(zip(PgHbaHDR, [contype, db, usr, source, netmask, method, options]))
 
-        line = [ rule[k] for k in PgHbaHDR if k in rule.keys() ]
-        rule['line'] = "\t".join(line)
-        return rule
+                if contype == 'local':
+                    del rule['src']
+                    del rule['mask']
+                elif '/' in source:
+                    del rule['mask']
+                elif ipv4_re.search(source):
+                    if not netmask:
+                        rule['src'] += '/32'
+                elif '/' in source:
+                    if not netmask:
+                        rule['src'] += '/128'
+                else:
+                    del rule['mask']
+
+                self.cleanEmptyRuleKeys(rule)
+
+                line = [ rule[k] for k in PgHbaHDR if k in rule.keys() ]
+                rule['line'] = "\t".join(line)
+                yield rule
 
     def add_rule(self, rule):
         key = self.rule2key(rule)
@@ -519,9 +522,9 @@ if __name__ == "__main__":
     pg_hba = PgHba(dest, options.order, options.backup)
 
     if options.contype:
-        rule = pg_hba.new_rule(options.contype, options.databases, options.users, options.source, options.netmask, options.method, options.options)
-        if options.state == "present":
-            pg_hba.add_rule(rule)
-        else:
-            pg_hba.remove_rule(rule)
-        pg_hba.write()
+        for rule in pg_hba.new_rules(options.contype, options.databases, options.users, options.source, options.netmask, options.method, options.options):
+            if options.state == "present":
+                pg_hba.add_rule(rule)
+            else:
+                pg_hba.remove_rule(rule)
+            pg_hba.write()

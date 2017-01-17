@@ -59,7 +59,7 @@ class pure_repmgr::config
 
       $facts['pure_cloud_nodes'].each | String $source | {
          pure_postgres::pg_hba {"pg_hba entry for $source":   
-            database        => 'repmgr',
+            database        => 'repmgr,replication',
             method          => 'trust',
             state           => 'present',
             source          => "${source}/32",
