@@ -21,6 +21,7 @@ define pure_postgres::pg_hba
       user     => $pure_postgres::postgres_user,
       command  => $cmd,
       loglevel => "debug",
+      require  => File['/usr/pgpure/postgres/9.6/bin/modify_pg_hba.py']
    }
 
 }
