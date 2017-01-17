@@ -20,6 +20,7 @@ class pure_postgres
       pg_version        => $pg_version,
       do_initdb         => $do_initdb,
    }
-
+   class { 'pure_postgres::config':
+   }
 }
 

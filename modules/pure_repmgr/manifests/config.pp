@@ -3,7 +3,7 @@
 # Configure a replicated cluster with repmgr from pure repo 
 class pure_repmgr::config
 (
-) inherits pure_repmgr::params
+) inherits pure_repmgr
 {
    file { [  '/etc/facter', '/etc/facter/facts.d' ]:
       ensure               => 'directory',
@@ -32,9 +32,7 @@ class pure_repmgr::config
       require              => File['/etc/facter/facts.d/pure_cloud_cluster.ini'],
    }
 
-#   if $facts['pure_cloud_isempty'] {
    if $facts['pure_cloud_nodeid'] {
-
       file { '/etc/repmgr.conf':
          ensure  => file,
          content => epp('pure_repmgr/repmgr.epp'),
@@ -59,17 +57,16 @@ class pure_repmgr::config
          line => 'wal_log_hints = on',
       }
 
-#      postgresql::server::pg_hba_rule { 'allow repmgr connections':
-#         type                 => 'host',
-#         database             => 'repmgr',
-#         user                 => 'repmgr',
-#         auth_method          => 'trust',
-#         address              => $facts['pure_cloud_nodes'],
-#         description          => 'Needed for repmgr',
-#         order                => '150',
-#         target               => '/var/pgpure/postgres/9.6/data/pg_hba.conf',
-#         postgresql_version   => '9.6',
-#      }
+      class { 'pure_postgres::pg_hba':   
+         database        => 'repmgr',
+         method          => 'trust',
+         netmask         => '255.255.255.255',
+         state           => 'present',
+         sources         => $facts['pure_cloud_nodes'],
+         connection_type => 'host',
+         user            => 'repmgr',
+      }
+
    }
 }
 
