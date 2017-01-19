@@ -33,7 +33,7 @@ class pure_repmgr::config
    }
 
    if $facts['pure_cloud_nodeid'] {
-      file { '/etc/repmgr.conf':
+      file { "${repmgr_conf}":
          ensure  => file,
          content => epp('pure_repmgr/repmgr.epp'),
          owner                => 'postgres',
@@ -70,15 +70,29 @@ class pure_repmgr::config
 
       class { 'pure_postgres::service':
          service_ensure => 'running',
-      }
+      } ->
+
+      postgresql::server::role{ 'repmgr':
+         password_hash    => 'repmgr',
+         db               => 'repmgr',
+         superuser        => true,
+         username         => 'repmgr',
+      } ->
 
       postgresql::server::db { 'repmgr':
          user     => 'repmgr',
          password => postgresql_password('repmgr', 'repmgr'),
          dbname   => 'repmgr',
          owner    => 'repmgr',
-      }
+      } ->
 
+      postgresql_psql { "ALTER ROLE repmgr SET search_path TO \"repmgr_${pure_cloud_cluster}\", \"\$user\", public;":
+         command     => "ALTER ROLE repmgr SET search_path TO \"repmgr_${pure_cloud_cluster}\", \"\\\$user\", public;",
+         require     => Class['Postgresql::Server'],
+      } ->
+
+      class {'pure_repmgr::register_primary':
+      }
 
    }
 }
