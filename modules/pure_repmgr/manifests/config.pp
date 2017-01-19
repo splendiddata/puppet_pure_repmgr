@@ -71,6 +71,15 @@ class pure_repmgr::config
       class { 'pure_postgres::service':
          service_ensure => 'running',
       }
+
+      postgresql::server::db { 'repmgr':
+         user     => 'repmgr',
+         password => postgresql_password('repmgr', 'repmgr'),
+         dbname   => 'repmgr',
+         owner    => 'repmgr',
+      }
+
+
    }
 }
 

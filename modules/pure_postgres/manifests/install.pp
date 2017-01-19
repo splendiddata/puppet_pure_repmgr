@@ -37,10 +37,6 @@ class pure_postgres::install
 
    }
 
-   package { $pg_package_name:
-      ensure => 'installed',
-   }
-
    class { 'pure_postgres::config':
    }
 
