@@ -7,6 +7,7 @@ import stat
 import re
 import tempfile
 import shutil
+import subprocess
 
 class TouchError(Exception):
     pass
@@ -395,7 +396,14 @@ class PgHba(object):
         else:
             return False
 
-    def write(self, backup_file=None):
+    def reload(self):
+        if self.changed:
+            try:
+                subprocess.call(['/etc/init.d/postgres', 'reload'])
+            except:
+                pass
+
+    def write(self, reload=False):
         if not self.changed:
             return
 
@@ -409,6 +417,9 @@ class PgHba(object):
             fileh = os.fdopen(filed, 'w')
 
         fileh.write(self.render())
+        if reload:
+            self.reload()
+        self.changed = False
         fileh.close()
 
     def new_rules(self, contype, databases, users, source, netmask, method, options):
@@ -509,6 +520,7 @@ if __name__ == "__main__":
     parser.add_argument('--options',              help='Connection options',                              default='')
     parser.add_argument('-o', '--order',          help='Order in hba file',                               default='sdu')
     parser.add_argument('--state',                help='Should it be present or absent',                  default='present')
+    parser.add_argument('-r', '--reload',         help='Reload config when changed and postgres running', action='store_true')
     parser.add_argument('-s', '--source',         help='Source network',                                  default='samehost')
     parser.add_argument('-t', '--contype',        help='Connection type',                                 default='host')
     parser.add_argument('-u', '--users',          help='List of users',                                   default='all')
@@ -527,4 +539,4 @@ if __name__ == "__main__":
                 pg_hba.add_rule(rule)
             else:
                 pg_hba.remove_rule(rule)
-            pg_hba.write()
+        pg_hba.write(options.reload)

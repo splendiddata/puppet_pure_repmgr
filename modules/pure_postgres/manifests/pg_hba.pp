@@ -15,7 +15,7 @@ define pure_postgres::pg_hba
 )
 {
 
-   $cmd = shellquote( '/usr/pgpure/postgres/9.6/bin/modify_pg_hba.py', '-d', $database, '-f', $pg_hba_file, '-m', $method, '-n', $netmask, '--state', $state, '-s', $source, '-t', $connection_type, '-u', $user )
+   $cmd = shellquote( '/usr/pgpure/postgres/9.6/bin/modify_pg_hba.py', '-d', $database, '-f', $pg_hba_file, '-m', $method, '-n', $netmask, '--state', $state, '-s', $source, '-t', $connection_type, '-u', $user , '--reload')
 
    exec { "exec $cmd":
       user     => $pure_postgres::postgres_user,
