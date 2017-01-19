@@ -99,27 +99,29 @@ class postgresql::server::config {
     create_resources('postgresql::server::pg_hba_rule', $ipv6acl_resources)
   }
 
-  # We must set a "listen_addresses" line in the postgresql.conf if we
-  # want to allow any connections from remote hosts.
-  postgresql::server::config_entry { 'listen_addresses':
-    value => $listen_addresses,
-  }
-  postgresql::server::config_entry { 'port':
-    value => $port,
-  }
-  postgresql::server::config_entry { 'data_directory':
-    value => $datadir,
-  }
-  if $logdir {
-    postgresql::server::config_entry { 'log_directory':
-      value => $logdir,
+  if ($manage_postgresql_conf == true) {
+    # We must set a "listen_addresses" line in the postgresql.conf if we
+    # want to allow any connections from remote hosts.
+    postgresql::server::config_entry { 'listen_addresses':
+      value => $listen_addresses,
     }
+    postgresql::server::config_entry { 'port':
+      value => $port,
+    }
+    postgresql::server::config_entry { 'data_directory':
+      value => $datadir,
+    }
+    if $logdir {
+      postgresql::server::config_entry { 'log_directory':
+        value => $logdir,
+      }
 
-  }
-  # Allow timestamps in log by default
-  if $log_line_prefix {
-    postgresql::server::config_entry {'log_line_prefix':
-      value => $log_line_prefix,
+    }
+    # Allow timestamps in log by default
+    if $log_line_prefix {
+      postgresql::server::config_entry {'log_line_prefix':
+        value => $log_line_prefix,
+      }
     }
   }
 

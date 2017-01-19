@@ -53,6 +53,7 @@ class postgresql::globals (
   $manage_pg_hba_conf       = undef,
   $manage_pg_ident_conf     = undef,
   $manage_recovery_conf     = undef,
+  $manage_postgresql_conf   = undef,
 
   $manage_package_repo      = undef,
 ) {
