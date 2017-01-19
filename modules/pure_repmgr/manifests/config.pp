@@ -67,6 +67,10 @@ class pure_repmgr::config
             user            => 'repmgr',
          }
       }
+
+      class { 'pure_postgres::service':
+         service_ensure => 'running',
+      }
    }
 }
 

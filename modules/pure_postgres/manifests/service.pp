@@ -3,28 +3,36 @@
 # Manages service of postgres installed from pure repo
 class pure_postgres::service
 (
+   $service_ensure  = undef,
 ) inherits pure_postgres
 {
-      if ! ($service_ensure in [ 'running', 'stopped', 'restarted', 'reloaded']) {
-        fail('service_ensure parameter must be running, stopped, restarted or reloaded')
+
+   $action  = $service_ensure ? {
+     'running'   => 'start',
+     'stopped'   => 'stop',
+     'restarted' => 'restart',
+     'reloaded' =>  'reload',
+     'started and reloaded' =>  'reload',
+     default  => '',
+   }
+
+   if $action == ''{
+      fail('service_ensure parameter must be running, stopped, restarted, reloaded or started and reloaded')
+   }
+
+   if $service_ensure == 'started and reloaded' {
+      # Restart postgresql service.
+      exec { "service postgres start":
+         user    => $pure_postgres::postgres_user,
+         command => "/etc/init.d/postgres $action",
+         before  => "service postgres $action",
       }
+   }
 
-      if $service_manage == true {
-         # Restart postgresql service.
-         exec { 'restart_postgresql':
-            user    => $repmgr::postgresql_user,
-            command => '/etc/init.d/postgresql restart',
-            before  => Exec['register_primary'],
-         }
-
-
-        service { 'ntp':
-          ensure     => $service_ensure,
-          enable     => $service_enable,
-          name       => $service_name,
-          hasstatus  => true,
-          hasrestart => true,
-        }
-      }
+   # Restart postgresql service.
+   exec { "service postgres $action":
+      user    => $pure_postgres::postgres_user,
+      command => "/etc/init.d/postgres $action",
+   }
 }
 
