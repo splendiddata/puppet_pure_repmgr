@@ -26,6 +26,7 @@ class pure_postgres::service
          user    => $pure_postgres::postgres_user,
          command => "/etc/init.d/postgres $action",
          before  => "service postgres $action",
+         loglevel => 'debug',
       }
    }
 
@@ -33,6 +34,7 @@ class pure_postgres::service
    exec { "service postgres $action":
       user    => $pure_postgres::postgres_user,
       command => "/etc/init.d/postgres $action",
+      loglevel => 'debug',
    }
 }
 
