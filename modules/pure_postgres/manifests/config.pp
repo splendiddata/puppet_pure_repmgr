@@ -57,7 +57,12 @@ class pure_postgres::config
    
      needs_initdb               => false,
    
-     encoding                   => 'utf8',
+# Do not set encoding, since postgresql::server::initdb would try to change it 
+# before postgres is running and on every run where postgres wasn't running, you get an error like:
+#   Error: /Stage[main]/Postgresql::Server::Initdb/Postgresql_psql[Set template1 encoding to utf8]: 
+#   Could not evaluate: Error evaluating 'unless' clause, returned pid 3252 exit 2: 'psql: 
+#   could not connect to server: No such file or directory
+#     encoding                   => 'utf8',
    
      manage_pg_hba_conf         => false,
      manage_pg_ident_conf       => false,
