@@ -97,7 +97,11 @@ class pure_repmgr::config
       }
       else {
          #I am not the first node, or there al already running postgres instances in this cluster
-
+         $facts['pure_cloud_available_hosts'].each | String $upstreamhost | {
+            pure_repmgr::clone_standby {"clone from $upstreamhost":
+               upstreamhost   => $upstreamhost,
+            }
+         }
 
       }
    }
