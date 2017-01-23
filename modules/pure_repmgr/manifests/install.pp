@@ -6,12 +6,16 @@ class pure_repmgr::install
 ) inherits pure_repmgr::params
 {
 
-   if $facts['pure_cloud_nodeid'] {
-      include pure_postgres
+   include pure_postgres
+   class { 'pure_postgres::repo':
+      repo => 'http://base.dev.splendiddata.com/postgrespure',
+   }
 
-      class { 'pure_postgres::repo':
-         repo => 'http://base.dev.splendiddata.com/postgrespure',
-      }
+   package { 'python-psycopg2':
+      ensure => 'installed',
+   }
+
+   if $facts['pure_cloud_nodeid'] {
 
       if $facts['pure_cloud_nodeid'] == "1" {
          class { 'pure_postgres::install':
@@ -29,6 +33,7 @@ class pure_repmgr::install
       package { 'repmgr':
          ensure => 'installed',
       }
+
    }
 }
 

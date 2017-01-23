@@ -50,7 +50,7 @@ class pure_repmgr::config
          mode                 => '0640',
          require              => File["${pure_postgres::pg_etc_dir}/conf.d"],
          replace              => false,
-      }
+      } ->
 
       file_line { 'wal_log_hints on':
          path => "$pure_postgres::pg_etc_dir/conf.d/wal.conf",  
@@ -74,7 +74,6 @@ class pure_repmgr::config
 
       postgresql::server::role{ 'repmgr':
          password_hash    => 'repmgr',
-         db               => 'repmgr',
          superuser        => true,
          username         => 'repmgr',
       } ->
