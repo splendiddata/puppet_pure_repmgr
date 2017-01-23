@@ -1,5 +1,19 @@
 #!/usr/bin/env python2
 import socket
+try:
+    import psycopg2
+except:
+    psycopg2 = None
+
+def check_connectivity(host, port):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.1)
+        s.connect((host, port))
+    except:
+        return False
+    s.close()
+    return True
 
 def ip_to_int(ip):
     if type(ip) is int:
@@ -98,6 +112,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Read cluster setup from DNS.')
     parser.add_argument('-n', '--name', default=defaultdns, help='DNS name to read (Without domain, domain name from machine is used).')
     parser.add_argument('-l', '--primarynetwork', default=defaultprimarynetwork, help='Network segment of primary site. This helps to detect initial master.')
+    parser.add_argument('-p', '--port', default=5432, help='Port where postgres is running on.')
     args = parser.parse_args()
 
     if not args.name:
@@ -149,6 +164,8 @@ if __name__ == "__main__":
     initialmaster=int_to_ip(primary_site[0])
     primary_site = [ int_to_ip(IP) for IP in primary_site ]
     secondary_site = [ int_to_ip(IP) for IP in sorted(secondary_site) ]
+    all_sites = primary_site + secondary_site
+    available_hosts = [ host for host in all_sites if check_connectivity(host, args.port) ]
     try:
         my_id = settings['node']
     except:
@@ -157,12 +174,13 @@ if __name__ == "__main__":
         my_id = all_sites.index(my_ip) + 1
 
     facts = dict()
-    facts['pure_cloud_cluster'] = repmgr_cluster_name
-    facts['pure_cloud_clusterdns'] = dns
-    facts['pure_cloud_nodes'] = primary_site + secondary_site
-    facts['pure_cloud_nodeid'] = my_id
-    facts['pure_cloud_primarysite'] = primary_site
-    facts['pure_cloud_secondarysite'] = secondary_site
-    facts['pure_cloud_isempty'] = not os.path.exists('/var/pgpure/postgres/9.6/data/PG_VERSION')
+    facts['pure_cloud_cluster']         = repmgr_cluster_name
+    facts['pure_cloud_clusterdns']      = dns
+    facts['pure_cloud_nodes']           = primary_site + secondary_site
+    facts['pure_cloud_available_hosts'] = available_hosts
+    facts['pure_cloud_nodeid']          = my_id
+    facts['pure_cloud_primarysite']     = primary_site
+    facts['pure_cloud_secondarysite']   = secondary_site
+    facts['pure_cloud_isempty']         = not os.path.exists('/var/pgpure/postgres/9.6/data/PG_VERSION')
 
     print(json.dumps(facts))

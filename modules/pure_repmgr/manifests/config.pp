@@ -68,31 +68,38 @@ class pure_repmgr::config
          }
       }
 
-      class { 'pure_postgres::service':
-         service_ensure => 'running',
-      } ->
+      if $facts['pure_cloud_nodeid'] == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
 
-      postgresql::server::role{ 'repmgr':
-         password_hash    => 'repmgr',
-         superuser        => true,
-         username         => 'repmgr',
-      } ->
+         class { 'pure_postgres::service':
+            service_ensure => 'running',
+         } ->
 
-      postgresql::server::db { 'repmgr':
-         user     => 'repmgr',
-         password => postgresql_password('repmgr', 'repmgr'),
-         dbname   => 'repmgr',
-         owner    => 'repmgr',
-      } ->
+         postgresql::server::role{ 'repmgr':
+            password_hash    => 'repmgr',
+            superuser        => true,
+            username         => 'repmgr',
+         } ->
 
-      postgresql_psql { "ALTER ROLE repmgr SET search_path TO \"repmgr_${pure_cloud_cluster}\", \"\$user\", public;":
-         command     => "ALTER ROLE repmgr SET search_path TO \"repmgr_${pure_cloud_cluster}\", \"\\\$user\", public;",
-         require     => Class['Postgresql::Server'],
-      } ->
+         postgresql::server::db { 'repmgr':
+            user     => 'repmgr',
+            password => postgresql_password('repmgr', 'repmgr'),
+            dbname   => 'repmgr',
+            owner    => 'repmgr',
+         } ->
 
-      class {'pure_repmgr::register_primary':
+         postgresql_psql { "ALTER ROLE repmgr SET search_path TO \"repmgr_${pure_cloud_cluster}\", \"\$user\", public;":
+            command     => "ALTER ROLE repmgr SET search_path TO \"repmgr_${pure_cloud_cluster}\", \"\\\$user\", public;",
+            require     => Class['Postgresql::Server'],
+         } ->
+
+         class {'pure_repmgr::register_primary':
+         }
       }
+      else {
+         #I am not the first node, or there al already running postgres instances in this cluster
 
+
+      }
    }
 }
 
