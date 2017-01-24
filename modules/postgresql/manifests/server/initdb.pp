@@ -48,81 +48,79 @@ class postgresql::server::initdb {
        }
      }
    
-     if($needs_initdb) {
-       # Build up the initdb command.
-       #
-       # We optionally add the locale switch if specified. Older versions of the
-       # initdb command don't accept this switch. So if the user didn't pass the
-       # parameter, lets not pass the switch at all.
-       $ic_base = "${initdb_path} --encoding '${encoding}' --pgdata '${datadir}'"
-       $ic_xlog = $xlogdir ? {
-         undef   => $ic_base,
-         default => "${ic_base} --xlogdir '${xlogdir}'"
-       }
-   
-       # The xlogdir need to be present before initdb runs.
-       # If xlogdir is default it's created by package installer
-       if($xlogdir) {
-         $require_before_initdb = [$datadir, $xlogdir]
-       } else {
-         $require_before_initdb = [$datadir]
-       }
-   
-       $initdb_command = $locale ? {
-         undef   => $ic_xlog,
-         default => "${ic_xlog} --locale '${locale}'"
-       }
-   
-       # This runs the initdb command, we use the existance of the PG_VERSION
-       # file to ensure we don't keep running this command.
-       exec { 'postgresql_initdb':
-         command   => $initdb_command,
-         creates   => "${datadir}/PG_VERSION",
-         user      => $user,
-         group     => $group,
-         logoutput => on_failure,
-         require   => File[$require_before_initdb],
-       }
-       # The package will take care of this for us the first time, but if we
-       # ever need to init a new db we need to copy these files explicitly
-       if $::operatingsystem == 'Debian' or $::operatingsystem == 'Ubuntu' {
-         if $::operatingsystemrelease =~ /^6/ or $::operatingsystemrelease =~ /^7/ or $::operatingsystemrelease =~ /^10\.04/ or $::operatingsystemrelease =~ /^12\.04/ {
-           file { 'server.crt':
-             ensure  => file,
-             path    => "${datadir}/server.crt",
-             source  => 'file:///etc/ssl/certs/ssl-cert-snakeoil.pem',
-             owner   => $::postgresql::server::user,
-             group   => $::postgresql::server::group,
-             mode    => '0644',
-             require => Exec['postgresql_initdb'],
-           }
-           file { 'server.key':
-             ensure  => file,
-             path    => "${datadir}/server.key",
-             source  => 'file:///etc/ssl/private/ssl-cert-snakeoil.key',
-             owner   => $::postgresql::server::user,
-             group   => $::postgresql::server::group,
-             mode    => '0600',
-             require => Exec['postgresql_initdb'],
-           }
+     # Build up the initdb command.
+     #
+     # We optionally add the locale switch if specified. Older versions of the
+     # initdb command don't accept this switch. So if the user didn't pass the
+     # parameter, lets not pass the switch at all.
+     $ic_base = "${initdb_path} --encoding '${encoding}' --pgdata '${datadir}'"
+     $ic_xlog = $xlogdir ? {
+       undef   => $ic_base,
+       default => "${ic_base} --xlogdir '${xlogdir}'"
+     }
+ 
+     # The xlogdir need to be present before initdb runs.
+     # If xlogdir is default it's created by package installer
+     if($xlogdir) {
+       $require_before_initdb = [$datadir, $xlogdir]
+     } else {
+       $require_before_initdb = [$datadir]
+     }
+ 
+     $initdb_command = $locale ? {
+       undef   => $ic_xlog,
+       default => "${ic_xlog} --locale '${locale}'"
+     }
+ 
+     # This runs the initdb command, we use the existance of the PG_VERSION
+     # file to ensure we don't keep running this command.
+     exec { 'postgresql_initdb':
+       command   => $initdb_command,
+       creates   => "${datadir}/PG_VERSION",
+       user      => $user,
+       group     => $group,
+       logoutput => on_failure,
+       require   => File[$require_before_initdb],
+     }
+     # The package will take care of this for us the first time, but if we
+     # ever need to init a new db we need to copy these files explicitly
+     if $::operatingsystem == 'Debian' or $::operatingsystem == 'Ubuntu' {
+       if $::operatingsystemrelease =~ /^6/ or $::operatingsystemrelease =~ /^7/ or $::operatingsystemrelease =~ /^10\.04/ or $::operatingsystemrelease =~ /^12\.04/ {
+         file { 'server.crt':
+           ensure  => file,
+           path    => "${datadir}/server.crt",
+           source  => 'file:///etc/ssl/certs/ssl-cert-snakeoil.pem',
+           owner   => $::postgresql::server::user,
+           group   => $::postgresql::server::group,
+           mode    => '0644',
+           require => Exec['postgresql_initdb'],
+         }
+         file { 'server.key':
+           ensure  => file,
+           path    => "${datadir}/server.key",
+           source  => 'file:///etc/ssl/private/ssl-cert-snakeoil.key',
+           owner   => $::postgresql::server::user,
+           group   => $::postgresql::server::group,
+           mode    => '0600',
+           require => Exec['postgresql_initdb'],
          }
        }
-     } elsif $encoding != undef {
-       # [workaround]
-       # by default pg_createcluster encoding derived from locale
-       # but it do does not work by installing postgresql via puppet because puppet
-       # always override LANG to 'C'
-       postgresql_psql { "Set template1 encoding to ${encoding}":
-         command => "UPDATE pg_database
-           SET datistemplate = FALSE
-           WHERE datname = 'template1'
-           ;
-           UPDATE pg_database
-           SET encoding = pg_char_to_encoding('${encoding}'), datistemplate = TRUE
-           WHERE datname = 'template1'",
-         unless  => "SELECT datname FROM pg_database WHERE
-           datname = 'template1' AND encoding = pg_char_to_encoding('${encoding}')",
-       }
+     }
+   } elsif $encoding != undef {
+     # [workaround]
+     # by default pg_createcluster encoding derived from locale
+     # but it do does not work by installing postgresql via puppet because puppet
+     # always override LANG to 'C'
+     postgresql_psql { "Set template1 encoding to ${encoding}":
+       command => "UPDATE pg_database
+         SET datistemplate = FALSE
+         WHERE datname = 'template1'
+         ;
+         UPDATE pg_database
+         SET encoding = pg_char_to_encoding('${encoding}'), datistemplate = TRUE
+         WHERE datname = 'template1'",
+       unless  => "SELECT datname FROM pg_database WHERE
+         datname = 'template1' AND encoding = pg_char_to_encoding('${encoding}')",
      }
    }
 }
