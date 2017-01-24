@@ -11,7 +11,7 @@ class pure_postgres::service_start()
    exec { "service postgres start":
       user    => $pure_postgres::postgres_user,
       command => "/etc/init.d/postgres start",
-      loglevel => 'debug',
+      creates => '/var/pgpure/postgres/9.6/data/postmaster.pid',
    } ->
 
    exec { "wait for postgres to finish starting":
@@ -26,9 +26,9 @@ class pure_postgres::service_stop()
 {
    # Do what is needed for postgresql service.
    exec { "service postgres stop":
-      user    => $pure_postgres::postgres_user,
-      command => "/etc/init.d/postgres stop",
-      loglevel => 'debug',
+      user     => $pure_postgres::postgres_user,
+      command  => "/etc/init.d/postgres stop",
+      onlyif   => "/bin/test -f /var/pgpure/postgres/9.6/data/postmaster.pid"
    }
 }
 
@@ -39,6 +39,7 @@ class pure_postgres::service_reload()
       user    => $pure_postgres::postgres_user,
       command => "/etc/init.d/postgres reload",
       loglevel => 'debug',
+      onlyif   => "/bin/test -f /var/pgpure/postgres/9.6/data/postmaster.pid"
    }
 }
 
