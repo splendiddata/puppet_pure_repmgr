@@ -25,12 +25,11 @@ class pure_postgres::install
          system               => true,
       } ->
 
-      file { [  '/var/pgpure', '/var/pgpure/postgres', "/var/pgpure/postgres/$pg_version"]:
+      file { [  '/var/pgpure', '/var/pgpure/postgres', "/var/pgpure/postgres/$pg_version", "/var/pgpure/postgres/$pg_version/data" ]:
          ensure               => 'directory',
          owner                => 'postgres',
          group                => 'postgres',
          mode                 => '0700',
-         before               => File["/var/pgpure/postgres/$pg_version/data"],
       }
 
    }
