@@ -39,8 +39,5 @@ class pure_postgres::install
 #       ensure  => 'installed',
 #   }
 
-   class { 'pure_postgres::config':
-   }
-
 }
 
