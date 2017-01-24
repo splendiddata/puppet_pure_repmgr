@@ -2,14 +2,15 @@
 # Private class
 define pure_repmgr::clone_standby(
    $upstreamhost       = undef,
+   $datadir            = $pure_repmgr::pg_data_dir,
 ) 
 {
-   $cmd = shellquote( '/usr/pgpure/postgres/9.6/bin/repmgr', '-f', "${pure_repmgr::repmgr_conf}", '-h', $upstreamhost, '-U', 'repmgr', '-d', 'repmgr', '-D', $pg_data_dir ,'standby', 'clone')
+   $cmd = shellquote( '/usr/pgpure/postgres/9.6/bin/repmgr', '-f', "${pure_repmgr::repmgr_conf}", '-h', $upstreamhost, '-U', 'repmgr', '-d', 'repmgr', '-D', $datadir ,'standby', 'clone')
 
    exec { "exec $cmd":
       user     => $pure_postgres::postgres_user,
       command  => $cmd,
-      loglevel => 'debug',
-      unless   => "/bin/test -d $pg_data_dir"
+#      loglevel => 'debug',
+      unless   => "/bin/test -f $datadir/PG_VERSION"
    }
 }

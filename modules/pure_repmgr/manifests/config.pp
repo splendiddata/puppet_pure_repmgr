@@ -100,6 +100,7 @@ class pure_repmgr::config
          $facts['pure_cloud_available_hosts'].each | String $upstreamhost | {
             pure_repmgr::clone_standby {"clone from $upstreamhost":
                upstreamhost   => $upstreamhost,
+               datadir        => $pg_data_dir,
             }
          }
 
