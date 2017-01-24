@@ -9,7 +9,7 @@ class pure_repmgr
 ) inherits pure_repmgr::params
 {
    class { 'pure_repmgr::install':
-   }
+   } ->
 
    class { 'pure_repmgr::config':
    }
