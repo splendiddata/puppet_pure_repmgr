@@ -9,7 +9,6 @@ class pure_repmgr::register_primary(
    exec { "exec $cmd":
       user     => $pure_postgres::postgres_user,
       command  => $cmd,
-      loglevel => 'debug',
       unless   => "/bin/echo ${unless} | /usr/pgpure/postgres/9.6/bin/psql -d repmgr --quiet --tuples-only | /bin/grep -q '|'"
    }
 }
