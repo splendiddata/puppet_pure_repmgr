@@ -10,7 +10,6 @@ define pure_repmgr::clone_standby(
    exec { "exec $cmd":
       user     => $pure_postgres::postgres_user,
       command  => $cmd,
-#      loglevel => 'debug',
-      unless   => "/bin/test -f $datadir/PG_VERSION"
+      unless   => "/bin/test -f $datadir/PG_VERSION",
    }
 }
