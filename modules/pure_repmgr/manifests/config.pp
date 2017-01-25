@@ -111,22 +111,20 @@ class pure_repmgr::config
          class { "pure_postgres::postgresql_server":
          }
 
-
          #I am not the first node, or there al already running postgres instances in this cluster
          $facts['pure_cloud_available_hosts'].each | String $upstreamhost | {
             pure_repmgr::clone_standby {"clone from $upstreamhost":
                upstreamhost   => $upstreamhost,
                datadir        => $pg_data_dir,
                require        => Class['pure_postgres::postgresql_server'],
-               before         => Class['pure_postgres::service'],
-            }
+               before         => Class['pure_postgres::start'],
+            } 
          }
 
-         class { 'pure_postgres::service':
-            service_ensure => 'running',
+         class { 'pure_postgres::start':
          } ->
 
-         class {'pure_repmgr::register_standby':
+         class { 'pure_repmgr::register_standby':
          }
 
       }
