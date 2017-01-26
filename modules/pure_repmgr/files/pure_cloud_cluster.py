@@ -5,6 +5,21 @@ try:
 except:
     psycopg2 = None
 
+def ssh_public_key(file):
+    try:
+        f=open(file)
+    except:
+        return {}
+    for l in f:
+        l=l.strip()
+        l=l.split('#')[0]
+        try:
+            type, key, comment = l.split(' ')[:3]
+            return {'type': type, 'key': key, 'comment': comment}
+        except:
+            pass           
+    return {}
+
 def check_connectivity(host, port):
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -174,13 +189,14 @@ if __name__ == "__main__":
         my_id = all_sites.index(my_ip) + 1
 
     facts = dict()
-    facts['pure_cloud_cluster']         = repmgr_cluster_name
-    facts['pure_cloud_clusterdns']      = dns
-    facts['pure_cloud_nodes']           = primary_site + secondary_site
-    facts['pure_cloud_available_hosts'] = available_hosts
-    facts['pure_cloud_nodeid']          = my_id
-    facts['pure_cloud_primarysite']     = primary_site
-    facts['pure_cloud_secondarysite']   = secondary_site
-    facts['pure_cloud_isempty']         = not os.path.exists('/var/pgpure/postgres/9.6/data/PG_VERSION')
+    facts['pure_cloud_cluster']           = repmgr_cluster_name
+    facts['pure_cloud_clusterdns']        = dns
+    facts['pure_cloud_nodes']             = primary_site + secondary_site
+    facts['pure_cloud_available_hosts']   = available_hosts
+    facts['pure_cloud_nodeid']            = my_id
+    facts['pure_cloud_primarysite']       = primary_site
+    facts['pure_cloud_secondarysite']     = secondary_site
+    facts['pure_cloud_isempty']           = not os.path.exists('/var/pgpure/postgres/9.6/data/PG_VERSION')
+    facts['pure_postgres_ssh_public_key'] = ssh_public_key('/home/postgres/.ssh/id_rsa.pub')
 
     print(json.dumps(facts))

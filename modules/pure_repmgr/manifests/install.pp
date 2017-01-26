@@ -38,5 +38,10 @@ class pure_repmgr::install
       }
 
    }
+   else {
+      #Also create postgres user with ssh keys in first run
+      class {'pure_postgres::postgres_user':
+      }
+   }
 }
 

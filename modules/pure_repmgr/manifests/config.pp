@@ -35,6 +35,8 @@ class pure_repmgr::config
    if $facts['pure_cloud_nodeid'] {
       $nodeid = $facts['pure_cloud_nodeid']
 
+      include pure_repmgr::ssh
+
       file { "${repmgr_conf}":
          ensure  => file,
          content => epp('pure_repmgr/repmgr.epp'),
