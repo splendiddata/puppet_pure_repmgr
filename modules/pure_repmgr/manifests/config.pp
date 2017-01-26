@@ -33,6 +33,8 @@ class pure_repmgr::config
    }
 
    if $facts['pure_cloud_nodeid'] {
+      $nodeid = $facts['pure_cloud_nodeid']
+
       file { "${repmgr_conf}":
          ensure  => file,
          content => epp('pure_repmgr/repmgr.epp'),
@@ -42,7 +44,7 @@ class pure_repmgr::config
          replace              => false,
       }
 
-      if $facts['pure_cloud_nodeid'] == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
+      if $nodeid == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
 
          $facts['pure_cloud_nodes'].each | String $source | {
             pure_postgres::pg_hba {"pg_hba entry for $source":   
@@ -98,7 +100,8 @@ class pure_repmgr::config
          class {'pure_repmgr::register_primary':
          }
       }
-      else {
+      elsif size($facts['pure_cloud_available_hosts']) > 0 {
+         #There already are running postgres instances in this cluster
          # create a directory
          file { "${pg_etc_dir}/conf.d":
             ensure   => 'directory',
@@ -111,7 +114,6 @@ class pure_repmgr::config
          class { "pure_postgres::postgresql_server":
          }
 
-         #I am not the first node, or there al already running postgres instances in this cluster
          $facts['pure_cloud_available_hosts'].each | String $upstreamhost | {
             pure_repmgr::clone_standby {"clone from $upstreamhost":
                upstreamhost   => $upstreamhost,
@@ -127,6 +129,12 @@ class pure_repmgr::config
          class { 'pure_repmgr::register_standby':
          }
 
+      }
+      else {
+         notify { "standby in empty cluster":
+            message  => "This is no initial master (ID $nodeid) and there are no running database servers yet.",
+            withpath => true,
+         }
       }
    }
 }
