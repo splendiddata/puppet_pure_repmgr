@@ -10,6 +10,7 @@ class pure_repmgr::register_standby(
    exec { "exec $cmd":
       user     => $pure_postgres::postgres_user,
       command  => $cmd,
-      unless   => "/bin/echo ${unless} | /usr/pgpure/postgres/9.6/bin/psql -d repmgr --quiet --tuples-only | /bin/grep -q '|'"
+      unless   => "/usr/bin/echo ${unless} | /usr/pgpure/postgres/9.6/bin/psql -d repmgr --quiet --tuples-only | /usr/bin/grep -q '|'",
+      onlyif   => "/bin/test -f /var/pgpure/postgres/9.6/data/PG_VERSION",
    }
 }

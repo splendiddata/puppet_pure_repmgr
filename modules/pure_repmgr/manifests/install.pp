@@ -17,20 +17,17 @@ class pure_repmgr::install
          class { 'pure_postgres::install':
             pg_version => '9.6',
             do_initdb  => true,
-            require   => Class['pure_postgres::repo'],
          }
       }
       else {
          class { 'pure_postgres::install':
             pg_version => '9.6',
             do_initdb  => false,
-            require   => Class['pure_postgres::repo'],
          }
       }
 
       package { 'repmgr':
          ensure => 'installed',
-         require   => Class['pure_postgres::repo'],
       }
 
    }

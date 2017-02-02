@@ -12,12 +12,14 @@ class pure_postgres::start()
       user    => $pure_postgres::postgres_user,
       command => "/etc/init.d/postgres start",
       creates => '/var/pgpure/postgres/9.6/data/postmaster.pid',
+      onlyif  => "test -f /var/pgpure/postgres/9.6/data/PG_VERSION",
+      path     => '/usr/pgpure/postgres/9.6/bin:/usr/local/bin:/bin',
    } ->
 
    exec { "wait for postgres to finish starting":
       user     => $pure_postgres::postgres_user,
       command  => $cmd,
-      path     => '/bin:/usr/pgpure/postgres/9.6/bin',
+      path     => '/usr/pgpure/postgres/9.6/bin:/usr/local/bin:/bin',
       loglevel => 'debug',
    }
 }
