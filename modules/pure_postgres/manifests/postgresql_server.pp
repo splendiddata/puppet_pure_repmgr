@@ -7,8 +7,8 @@ class pure_postgres::postgresql_server
 {
 
    class { 'postgresql::server':
-     package_name               => 'postgres-9.6',
-     client_package_name        => 'postgres-9.6-client',
+     package_name               => "postgres-$pg_version",
+     client_package_name        => "postgres-${pg_version}-client",
      package_ensure             => true,
    
      service_ensure             => false,
@@ -19,20 +19,21 @@ class pure_postgres::postgresql_server
      listen_addresses           => '*',
      port                       => 5432,
    
-     initdb_path                => '/usr/pgpure/postgres/9.6/bin/initdb',
-     createdb_path              => '/usr/pgpure/postgres/9.6/bin/createdb',
-     psql_path                  => '/usr/pgpure/postgres/9.6/bin/psql',
-     pg_hba_conf_path           => '/etc/pgpure/postgres/9.6/data/pg_hba.conf',
-     pg_ident_conf_path         => '/etc/pgpure/postgres/9.6/data/pg_ident.conf',
-     postgresql_conf_path       => '/etc/pgpure/postgres/9.6/data/postgresql.conf',
-     recovery_conf_path         => '/var/pgpure/postgres/9.6/data/recovery.conf',
+     initdb_path                => "$pg_bin_dir/initdb",
+     createdb_path              => "$pg_bin_dir/createdb",
+     psql_path                  => "$pg_bin_dir/psql",
+     pg_hba_conf_path           => "$pg_etc_dir/pg_hba.conf",
+     pg_ident_conf_path         => "$pg_etc_dir/pg_ident.conf",
+     postgresql_conf_path       => "$pg_etc_dir/postgresql.conf",
+     recovery_conf_path         => "$pg_data_dir/recovery.conf",
    
-     datadir                    => '/var/pgpure/postgres/9.6/data',
-     xlogdir                    => '/var/pgpure/postgres/9.6/data/pg_xlog',
-     logdir                     => '/var/log/pgpure/postgres',
+     datadir                    => $pg_data_dir,
+     xlogdir                    => "$pg_data_dir/pg_xlog",
+     logdir                     => $pg_log_dir,
    
-     user                       => 'postgres',
-     group                      => 'postgres',
+     user                       => $postgres_user,
+
+     group                      => $postgres_group,
    
      needs_initdb               => false,
    
@@ -49,7 +50,7 @@ class pure_postgres::postgresql_server
      manage_postgresql_conf     => false,
    
      #Deprecated
-     version                    => '9.6',
+     version                    => $pg_version,
    }
 }
 

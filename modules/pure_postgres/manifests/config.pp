@@ -8,8 +8,8 @@ class pure_postgres::config
    # create a directory      
    file { "${pg_etc_dir}/conf.d":
       ensure   => 'directory',
-      owner    => 'postgres',
-      group    => 'postgres',
+      owner    => $postgres_user,
+      group    => $postgres_group,
       mode     => '0750',
       require  => Package["postgresql-server"],
    }
@@ -21,10 +21,10 @@ class pure_postgres::config
       require  => Package["postgresql-server"],
    } ->
 
-   file { "/usr/pgpure/postgres/9.6/bin/modify_pg_hba.py":
+   file { "$pg_bin_dir/modify_pg_hba.py":
       ensure  => 'present',
-      owner   => 'postgres',
-      group   => 'postgres',
+      owner   => $postgres_user,
+      group   => $postgres_group,
       mode    => '0750',
       source  => 'puppet:///modules/pure_postgres/pg_hba.py',
    }

@@ -1,6 +1,6 @@
 # == Class: pure_postgres::install
 #
-# Installs postgres from pure repo in a bare format (without running initdb on /var/pgpure/postgres/9.6/data)
+# Installs postgres from pure repo in a bare format (without running initdb on $pg_data_dir)
 class pure_postgres::install
 (
   $pg_version           = $pure_postgres::params::version,
@@ -16,8 +16,8 @@ class pure_postgres::install
 
       file { [  '/var/pgpure', '/var/pgpure/postgres', "/var/pgpure/postgres/$pg_version", "/var/pgpure/postgres/$pg_version/data" ]:
          ensure               => 'directory',
-         owner                => 'postgres',
-         group                => 'postgres',
+         owner                => $postgres_user,
+         group                => $postgres_group,
          mode                 => '0700',
       }
 

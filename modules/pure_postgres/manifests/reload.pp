@@ -9,7 +9,7 @@ class pure_postgres::reload()
       user    => $pure_postgres::postgres_user,
       command => "/etc/init.d/postgres reload",
       loglevel => 'debug',
-      onlyif   => "/bin/test -f /var/pgpure/postgres/9.6/data/postmaster.pid"
+      onlyif   => "/bin/test -f $pg_pid_file"
    }
 }
 

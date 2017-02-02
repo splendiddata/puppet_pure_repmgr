@@ -1,6 +1,6 @@
 # == Class: pure_postgres::postgres_user
 #
-# Installs postgres from pure repo in a bare format (without running initdb on /var/pgpure/postgres/9.6/data)
+# Create postgres user and groups
 class pure_postgres::postgres_user
 (
 ) inherits pure_postgres
@@ -10,20 +10,20 @@ class pure_postgres::postgres_user
       ensure               => present,
    } ->
 
-   user { 'postgres':
+   user { $postgres_user:
       ensure               => present,
       comment              => "postgres server",
       groups               => "pgpure",
-      home                 => "/home/postgres",
+      home                 => "/home/$postgres_user",
       managehome           => true,
       shell                => '/bin/bash',
       system               => true,
    } ->
 
    exec { 'Generate ssh keys for postgres user':
-      user    => 'postgres',
+      user    => $postgres_user,
       command => '/usr/bin/ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa',
-      creates => '/home/postgres/.ssh/id_rsa',
+      creates => "/home/$postgres_user/.ssh/id_rsa",
    }
 
 
