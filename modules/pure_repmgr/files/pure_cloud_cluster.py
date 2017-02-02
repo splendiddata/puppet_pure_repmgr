@@ -170,7 +170,7 @@ if __name__ == "__main__":
     secondary_site = set()
     for IP in IPs[2]:
         IP_int = ip_to_int(IP)
-        if IP_int > nw_start and IP_int < nw_end:
+        if IP_int >= nw_start and IP_int <= nw_end:
             primary_site.add(IP_int)
         else:
             secondary_site.add(IP_int)
