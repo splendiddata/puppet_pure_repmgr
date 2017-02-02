@@ -15,13 +15,13 @@ class pure_repmgr::install
 
       if $facts['pure_cloud_nodeid'] == "1" and size($facts['pure_cloud_available_hosts']) == 0 {
          class { 'pure_postgres::install':
-            pg_version => '9.6',
+            pg_version => $pg_version,
             do_initdb  => true,
          }
       }
       else {
          class { 'pure_postgres::install':
-            pg_version => '9.6',
+            pg_version => $pg_version,
             do_initdb  => false,
          }
       }

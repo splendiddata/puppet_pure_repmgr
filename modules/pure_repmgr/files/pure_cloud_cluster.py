@@ -196,7 +196,6 @@ if __name__ == "__main__":
     facts['pure_cloud_nodeid']            = my_id
     facts['pure_cloud_primarysite']       = primary_site
     facts['pure_cloud_secondarysite']     = secondary_site
-    facts['pure_cloud_isempty']           = not os.path.exists('/var/pgpure/postgres/9.6/data/PG_VERSION')
     facts['pure_postgres_ssh_public_key'] = ssh_public_key('/home/postgres/.ssh/id_rsa.pub')
 
     print(json.dumps(facts))
