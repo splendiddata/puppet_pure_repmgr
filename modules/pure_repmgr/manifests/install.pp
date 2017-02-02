@@ -7,10 +7,6 @@ class pure_repmgr::install
 {
 
    include pure_postgres
-   class { 'pure_postgres::repo':
-      repo => 'http://base.dev.splendiddata.com/postgrespure',
-   } ->
-
    package { 'python-psycopg2':
       ensure => 'installed',
    }
