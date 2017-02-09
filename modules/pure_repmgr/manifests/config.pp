@@ -101,17 +101,14 @@ class pure_repmgr::config
             owner    => 'postgres',
             group    => 'postgres',
             mode     => '0750',
-            require  => Package["postgresql-server"],
-         } ->
-
-         class { "pure_postgres::postgresql_server":
-         }
+            require  => Package["postgres-$pg_version"]
+         } 
 
          $facts['pure_cloud_available_hosts'].each | String $upstreamhost | {
             pure_repmgr::clone_standby {"clone from $upstreamhost":
                upstreamhost   => $upstreamhost,
                datadir        => $pg_data_dir,
-               require        => Class['pure_postgres::postgresql_server'],
+               require        => File["${pg_etc_dir}/conf.d"],
                before         => Class['pure_postgres::start'],
             } 
          }

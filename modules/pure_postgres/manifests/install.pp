@@ -23,10 +23,9 @@ class pure_postgres::install
 
    }
 
-#This is done by the postgres package aswell...
-#   package {"postgres-$pg_version":
-#       ensure  => 'installed',
-#   }
+   package {"postgres-$pg_version":
+       ensure  => 'installed',
+   }
 
 }
 

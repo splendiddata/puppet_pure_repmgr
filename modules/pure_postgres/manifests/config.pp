@@ -11,14 +11,14 @@ class pure_postgres::config
       owner    => $postgres_user,
       group    => $postgres_group,
       mode     => '0750',
-      require  => Package["postgresql-server"],
+      require  => Package["postgres-$pg_version"],
    }
 
    #Add conf.d to postgres.conf
    file_line { 'confd':
       path => "$pg_etc_dir/postgresql.conf",
       line => "include_dir = 'conf.d'",
-      require  => Package["postgresql-server"],
+      require  => Package["postgres-$pg_version"],
    } ->
 
    file { "$pg_bin_dir/modify_pg_hba.py":
@@ -29,7 +29,7 @@ class pure_postgres::config
       source  => 'puppet:///modules/pure_postgres/pg_hba.py',
    }
 
-   class { "pure_postgres::postgresql_server":
-   }
+#   class { "pure_postgres::postgresql_server":
+#   }
 }
 
