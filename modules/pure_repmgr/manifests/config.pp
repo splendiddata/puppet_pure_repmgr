@@ -81,22 +81,13 @@ class pure_repmgr::config
             service_ensure => 'running',
          } ->
 
-         postgresql::server::role{ 'repmgr':
+         pure_postgres::role {'repmgr':
+            with_db          => true,
             password_hash    => 'repmgr',
             superuser        => true,
-            username         => 'repmgr',
-         } ->
-
-         postgresql::server::db { 'repmgr':
-            user     => 'repmgr',
-            password => postgresql_password('repmgr', 'repmgr'),
-            dbname   => 'repmgr',
-            owner    => 'repmgr',
-         } ->
-
-         postgresql_psql { "ALTER ROLE repmgr SET search_path TO \"repmgr_${pure_cloud_cluster}\", \"\$user\", public;":
-            command     => "ALTER ROLE repmgr SET search_path TO \"repmgr_${pure_cloud_cluster}\", \"\\\$user\", public;",
-            require     => Class['Postgresql::Server'],
+            #$user will be expanded by postgres and should not be expanded by puppet.
+            searchpath       => [ "\"repmgr_${pure_cloud_cluster}\"", '"$user"', 'public' ],
+            replication      => true,
          } ->
 
          class {'pure_repmgr::register_primary':
