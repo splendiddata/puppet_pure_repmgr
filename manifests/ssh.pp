@@ -31,11 +31,13 @@ class pure_repmgr::ssh
       tag    => $facts['pure_cloud_clusterdns'],
    }
 
-   @@sshkey { "${facts['fqdn']}_${facts['hostname']}":
-      name   => $facts['networking']['hostname'],
-      type   => ecdsa-sha2-nistp256,
-      key    => $::sshecdsakey,
-      tag    => $facts['pure_cloud_clusterdns'],
+   if $facts['fqdn'] != $facts['hostname'] {
+      @@sshkey { "${facts['fqdn']}_${facts['hostname']}":
+         name   => $facts['hostname'],
+         type   => ecdsa-sha2-nistp256,
+         key    => $::sshecdsakey,
+         tag    => $facts['pure_cloud_clusterdns'],
+      }
    }
 
    Sshkey <<| tag == $facts['pure_cloud_clusterdns'] |>>
