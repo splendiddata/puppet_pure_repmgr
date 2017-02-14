@@ -48,6 +48,8 @@ class pure_repmgr::config
 
       if $nodeid == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
 
+         $replication_role  = pick( $facts['pure_replication_role'], 'master')
+
          $facts['pure_cloud_nodes'].each | String $source | {
             pure_postgres::pg_hba {"pg_hba entry for $source":   
                database        => 'repmgr,replication',
@@ -56,6 +58,7 @@ class pure_repmgr::config
                source          => "${source}/32",
                connection_type => 'host',
                user            => 'repmgr',
+               before          => Class['pure_postgres::start'],
             }
          }
 
@@ -73,27 +76,16 @@ class pure_repmgr::config
          } ->
 
          file_line { 'wal_log_hints on':
-            path => "$pure_postgres::pg_etc_dir/conf.d/wal.conf",
-            line => 'wal_log_hints = on',
-         } ->
-
-         class { 'pure_postgres::service':
-            service_ensure => 'running',
-         } ->
-
-         pure_postgres::role {'repmgr':
-            with_db          => true,
-            password_hash    => 'repmgr',
-            superuser        => true,
-            #$user will be expanded by postgres and should not be expanded by puppet.
-            searchpath       => [ "\"repmgr_${pure_cloud_cluster}\"", '"$user"', 'public' ],
-            replication      => true,
-         } ->
-
-         class {'pure_repmgr::register_primary':
+            path   => "$pure_postgres::pg_etc_dir/conf.d/wal.conf",
+            line   => 'wal_log_hints = on',
+            before => Class['pure_postgres::start'],
          }
+
       }
       elsif size($facts['pure_cloud_available_hosts']) > 0 {
+         
+         $replication_role  = pick( $facts['pure_replication_role'], 'standby')
+
          #There already are running postgres instances in this cluster
          # create a directory
          file { "${pg_etc_dir}/conf.d":
@@ -110,13 +102,7 @@ class pure_repmgr::config
                datadir        => $pg_data_dir,
                require        => File["${pg_etc_dir}/conf.d"],
                before         => Class['pure_postgres::start'],
-            } 
-         }
-
-         class { 'pure_postgres::start':
-         } ->
-
-         class { 'pure_repmgr::register_standby':
+            }
          }
 
       }
@@ -126,6 +112,30 @@ class pure_repmgr::config
             withpath => true,
          }
       }
+
+      class { 'pure_postgres::start':
+      } ->
+
+      class { 'pure_postgres::reload':
+      } ->
+
+      class {'pure_repmgr::register':
+         replication_role  => $replication_role,
+      }
+
+      if $replication_role == 'master' {
+         pure_postgres::role {'repmgr':
+            with_db          => true,
+            password_hash    => 'repmgr',
+            superuser        => true,
+            #$user will be expanded by postgres and should not be expanded by puppet.
+            searchpath       => [ "\"repmgr_${pure_cloud_cluster}\"", '"$user"', 'public' ],
+            replication      => true,
+            before           => Class['pure_repmgr::register'],
+            require          => Class['pure_postgres::reload'],
+         }
+      }
    }
+
 }
 

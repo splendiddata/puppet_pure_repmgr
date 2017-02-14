@@ -188,6 +188,17 @@ if __name__ == "__main__":
         my_ip = socket.gethostbyname(socket.gethostname())
         my_id = all_sites.index(my_ip) + 1
 
+    try:
+        cn=psycopg2.connect(database='repmgr', host=socket.gethostname(), user='repmgr')
+        cur=cn.cursor()
+        cur.execute('select pg_is_in_recovery()')
+        if cur.next()[0]:
+            replication_role = 'standby'
+        else:
+            replication_role = 'master'
+    except Exception as e:
+        replication_role = None 
+
     facts = dict()
     facts['pure_cloud_cluster']           = repmgr_cluster_name
     facts['pure_cloud_clusterdns']        = dns
@@ -197,5 +208,7 @@ if __name__ == "__main__":
     facts['pure_cloud_primarysite']       = primary_site
     facts['pure_cloud_secondarysite']     = secondary_site
     facts['pure_postgres_ssh_public_key'] = ssh_public_key('/home/postgres/.ssh/id_rsa.pub')
+    if replication_role:
+        facts['pure_replication_role']        = replication_role
 
     print(json.dumps(facts))
