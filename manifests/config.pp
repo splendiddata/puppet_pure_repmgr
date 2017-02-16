@@ -17,7 +17,7 @@ class pure_repmgr::config
       content => epp('pure_repmgr/pure_cloud_cluster.epp'),
       owner                => 'root',
       group                => 'root',
-      mode                 => '0640',
+      mode                 => '0644',
       require              => File['/etc/facter/facts.d'],
       replace              =>  false,
    }
@@ -59,6 +59,7 @@ class pure_repmgr::config
                connection_type => 'host',
                user            => 'repmgr',
                before          => Class['pure_postgres::start'],
+               notify          => Class['pure_postgres::reload'],
             }
          }
 
@@ -116,9 +117,6 @@ class pure_repmgr::config
       class { 'pure_postgres::start':
       } ->
 
-      class { 'pure_postgres::reload':
-      } ->
-
       class {'pure_repmgr::register':
          replication_role  => $replication_role,
       }
@@ -135,6 +133,13 @@ class pure_repmgr::config
             require          => Class['pure_postgres::reload'],
          }
       }
+
+      class { 'pure_postgres::reload':
+         before  => Class['pure_repmgr::register'],
+         require => Class['pure_postgres::start'],
+      }
+
+
    }
 
 }
