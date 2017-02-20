@@ -5,8 +5,8 @@ class pure_repmgr::register(
 ) inherits pure_repmgr
 {
    $check = $replication_role ? {
-      'master'  => 'False',
-      'standby' => 'True',
+      'master'  => 'True',
+      'standby' => 'False',
       default   => '',
    }
 
@@ -15,7 +15,7 @@ class pure_repmgr::register(
    }
 
    $cmd = shellquote( "$pg_bin_dir/repmgr", '-f', "${pure_repmgr::repmgr_conf}", $replication_role, 'register')
-   $unless = shellquote("${pure_postgres::pg_bin_dir}/psql", "-d", "repmgr", "-c", "select * from repmgr_${pure_cloud_cluster}.repl_nodes where pg_is_in_recovery()=$check or name='$fqdn'" )
+   $unless = shellquote("${pure_postgres::pg_bin_dir}/psql", "-d", "repmgr", "--quiet", "--tuples-only", "-c", "select * from repmgr_${pure_cloud_cluster}.repl_nodes where name='$fqdn'" )
 
    exec { "exec $cmd":
       user     => $pure_postgres::postgres_user,

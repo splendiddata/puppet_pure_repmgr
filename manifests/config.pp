@@ -46,25 +46,12 @@ class pure_repmgr::config
          replace              => false,
       }
 
+      class { 'pure_postgres::config':
+      }
+
       if $nodeid == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
 
          $replication_role  = pick( $facts['pure_replication_role'], 'master')
-
-         $facts['pure_cloud_nodes'].each | String $source | {
-            pure_postgres::pg_hba {"pg_hba entry for $source":   
-               database        => 'repmgr,replication',
-               method          => 'trust',
-               state           => 'present',
-               source          => "${source}/32",
-               connection_type => 'host',
-               user            => 'repmgr',
-               before          => Class['pure_postgres::start'],
-               notify          => Class['pure_postgres::reload'],
-            }
-         }
-
-         class { 'pure_postgres::config':
-         } ->
 
          file { "${pure_postgres::pg_etc_dir}/conf.d/wal.conf":
             ensure  => file,
@@ -72,7 +59,7 @@ class pure_repmgr::config
             owner                => 'postgres',
             group                => 'postgres',
             mode                 => '0640',
-            require              => File["${pure_postgres::pg_etc_dir}/conf.d"],
+            require              => [ Class['pure_postgres::config'], File["${pure_postgres::pg_etc_dir}/conf.d"] ],
             replace              => false,
          } ->
 
@@ -87,17 +74,7 @@ class pure_repmgr::config
          
          $replication_role  = pick( $facts['pure_replication_role'], 'standby')
 
-         #There already are running postgres instances in this cluster
-         # create a directory
-         file { "${pg_etc_dir}/conf.d":
-            ensure   => 'directory',
-            owner    => 'postgres',
-            group    => 'postgres',
-            mode     => '0750',
-            require  => Package["postgres-$pg_version"]
-         } 
-
-         $facts['pure_cloud_available_hosts'].each | String $upstreamhost | {
+         split($facts['pure_cloud_available_hosts'],",").each | String $upstreamhost | {
             pure_repmgr::clone_standby {"clone from $upstreamhost":
                upstreamhost   => $upstreamhost,
                datadir        => $pg_data_dir,
@@ -111,6 +88,20 @@ class pure_repmgr::config
          notify { "standby in empty cluster":
             message  => "This is no initial master (ID $nodeid) and there are no running database servers yet.",
             withpath => true,
+         }
+      }
+
+
+      split($facts['pure_cloud_nodes'],",").each | String $source | {
+         pure_postgres::pg_hba {"pg_hba entry for $source":
+            database        => 'repmgr,replication',
+            method          => 'trust',
+            state           => 'present',
+            source          => "${source}/32",
+            connection_type => 'host',
+            user            => 'repmgr',
+            before          => Class['pure_postgres::start'],
+            notify          => Class['pure_postgres::reload'],
          }
       }
 

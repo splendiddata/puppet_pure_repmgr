@@ -6,11 +6,11 @@ class pure_repmgr::ssh
 ) inherits pure_repmgr
 {
 
-   if $facts['pure_postgres_ssh_public_key'] {
+   if $facts['pure_postgres_ssh_public_key_key'] {
       @@ssh_authorized_key { "postgres@$fqdn":
          ensure => present,
-         type   => $facts['pure_postgres_ssh_public_key']['type'],
-         key    => $facts['pure_postgres_ssh_public_key']['key'],
+         type   => $facts['pure_postgres_ssh_public_key_type'],
+         key    => $facts['pure_postgres_ssh_public_key_key'],
          tag    => $facts['pure_cloud_clusterdns'],
          user   => 'postgres',
       }

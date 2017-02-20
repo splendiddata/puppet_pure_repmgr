@@ -5,6 +5,18 @@ try:
 except:
     psycopg2 = None
 
+def printfacts(facts, prec=""):
+    if type(facts) == dict:
+        for k in facts:
+            newprec=k
+            if prec:
+               newprec="{0}_{1}".format(prec,newprec)
+            printfacts(facts[k], newprec)
+    elif type(facts) == list:
+        print("{0}={1}".format(prec,",".join(facts)))
+    else:
+        print("{0}={1}".format(prec,str(facts)))
+
 def ssh_public_key(file):
     try:
         f=open(file)
@@ -202,7 +214,7 @@ if __name__ == "__main__":
     facts = dict()
     facts['pure_cloud_cluster']           = repmgr_cluster_name
     facts['pure_cloud_clusterdns']        = dns
-    facts['pure_cloud_nodes']             = primary_site + secondary_site
+    facts['pure_cloud_nodes']             = (primary_site + secondary_site)
     facts['pure_cloud_available_hosts']   = available_hosts
     facts['pure_cloud_nodeid']            = my_id
     facts['pure_cloud_primarysite']       = primary_site
@@ -211,4 +223,5 @@ if __name__ == "__main__":
     if replication_role:
         facts['pure_replication_role']        = replication_role
 
-    print(json.dumps(facts))
+#    print(json.dumps(facts))
+    printfacts(facts)
