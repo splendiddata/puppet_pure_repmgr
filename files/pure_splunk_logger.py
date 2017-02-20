@@ -178,7 +178,7 @@ class pg_server():
         return True
 
 class pg_cluster():
-    def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/etc/pgpure/postgres/9.6/data/splunk_logger.ini', debug=False, conn_timeout=3):
+    def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/etc/pgpure/splunk_logger/splunk_logger.ini', debug=False, conn_timeout=3):
         self.dns           = dns
         self.postgresport  = postgresport
         self.nodes         = {}
