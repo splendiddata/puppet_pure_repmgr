@@ -30,11 +30,36 @@ class pure_repmgr::install
          ensure => 'installed',
       }
 
+      file {'/usr/pgpure/splunk_logger':
+         ensure => directory,
+         owner  => $pure_postgres::postgres_user,
+         group  => $pure_postgres::postgres_group,
+      } ->
+
+      file {'/usr/pgpure/splunk_logger/pure_splunk_logger.py':
+         path    => '/usr/pgpure/splunk_logger/pure_splunk_logger.py',
+         ensure  => 'file',
+         source  => 'puppet:///modules/pure_repmgr/pure_splunk_logger.py',
+         owner   => $pure_postgres::postgres_user,
+         group   => $pure_postgres::postgres_group,
+         mode    => '0750',
+      } ->
+
+      file {'/usr/lib/systemd/system/pure_splunk_logger.service':
+         path    => '/usr/lib/systemd/system/pure_splunk_logger.service',
+         ensure  => 'file',
+         source  => 'puppet:///modules/pure_repmgr/pure_splunk_logger.service',
+         owner   => 'root',
+         group   => 'root',
+         mode    => '0644',
+      }
+
    }
    else {
       #Also create postgres user with ssh keys in first run
       class {'pure_postgres::postgres_user':
       }
    }
+
 }
 
