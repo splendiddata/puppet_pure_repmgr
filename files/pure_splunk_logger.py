@@ -154,11 +154,10 @@ class pg_server():
         return None
 
     def accesslevel(self):
-        if self.check_connectivity():
-            if self.num_connections():
-                ret = 3
-            else:
-                ret = 2
+        if self.num_connections():
+            ret = 3
+        elif self.check_connectivity():
+            ret = 2
         elif self.check_connectivity(port=22):
             ret = 1
         else:
