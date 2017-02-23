@@ -1,10 +1,11 @@
 [Unit]
 Description=Postgrespure splunk logger
+After=network.target
 
 [Service]
 ExecStart=/usr/pgpure/splunk_logger/pure_splunk_logger.py
 ExecReload=/bin/kill -USR1 $MAINPID
-ExecStop=/bin/kill -SIGTERM $MAINPID
+ExecStop=[ "$MAINPID" ] && /bin/kill -SIGTERM $MAINPID
 
 [Install]
 WantedBy=multi-user.target
