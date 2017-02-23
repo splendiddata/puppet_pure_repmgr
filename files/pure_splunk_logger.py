@@ -190,8 +190,6 @@ class pg_cluster():
         self.debug         = debug
         self.conn_timeout  = conn_timeout
 
-        self.update_nodelist()
-
     def update_nodelist(self):
         nodes = {}
         master = None
@@ -227,13 +225,20 @@ class pg_cluster():
     def __str__(self):
 
         state     = {}
+        master_is_valid = False
         try:
-            if not self.master.master():
-                self.update_nodelist()
+            master_is_valid = self.master.master()
+            if not master_is_valid:
+                raise Exception('Master is no master')
+        except:
+            self.update_nodelist()
+        try:
+            if not master_is_valid:
+                master_is_valid = self.master.master()
             state['master'] = self.master.ip
         except:
             state['master'] = 'unknown'
-            
+
         try:
             localnode        = self.nodes[self.local_node_ip]
             state['max_con'] = localnode.config_parameter('max_connections')
