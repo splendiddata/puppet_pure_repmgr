@@ -10,11 +10,11 @@ class pure_repmgr
   $pg_xlog_dir    = $pure_postgres::params::pg_xlog_dir,
 ) inherits pure_repmgr::params
 {
-   class { 'pure_repmgr::install':
-   } ->
+  class { 'pure_repmgr::install':
+  } ->
 
-   class { 'pure_repmgr::config':
-   }
+  class { 'pure_repmgr::config':
+  }
 
 }
 

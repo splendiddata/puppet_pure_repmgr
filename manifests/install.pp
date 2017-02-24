@@ -8,30 +8,30 @@ class pure_repmgr::install
 ) inherits pure_repmgr
 {
 
-   package { 'python-psycopg2':
-      ensure => 'installed',
-   }
+  package { 'python-psycopg2':
+    ensure => 'installed',
+  }
 
-   package { 'repmgr':
-      ensure => 'installed',
-   }
+  package { 'repmgr':
+    ensure => 'installed',
+  }
 
-   if $facts['pure_cloud_nodeid'] {
+  if $facts['pure_cloud_nodeid'] {
 
-      #By default don't initdb. For intial master, config will include initdb class himself.
-      class { 'pure_postgres':
-         do_initdb   => false,
-         pg_data_dir => $pg_data_dir,
-         pg_xlog_dir => $pg_xlog_dir,
-      }
+    #By default don't initdb. For intial master, config will include initdb class himself.
+    class { 'pure_postgres':
+      do_initdb   => false,
+      pg_data_dir => $pg_data_dir,
+      pg_xlog_dir => $pg_xlog_dir,
+    }
 
-      if $cluster_logger {
-         include pure_repmgr::cluster_logger
-      }
-   }
-   else {
-      include pure_postgres::postgres_user
-   }
+    if $cluster_logger {
+      include pure_repmgr::cluster_logger
+    }
+  }
+  else {
+    include pure_postgres::postgres_user
+  }
 
 }
 
