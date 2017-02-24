@@ -5,7 +5,7 @@ After=network.target
 [Service]
 ExecStart=/usr/pgpure/cluster_logger/pure_cluster_logger.py
 ExecReload=/bin/kill -USR1 $MAINPID
-ExecStop=[ "$MAINPID" ] && /bin/kill -SIGTERM $MAINPID
+ExecStop=/bin/kill -SIGTERM $MAINPID
 
 [Install]
 WantedBy=multi-user.target
