@@ -6,33 +6,43 @@ class pure_repmgr::cluster_logger
 ) inherits pure_repmgr
 {
 
-   file { ['/usr/pgpure/cluster_logger', '/var/log/pgpure/cluster_logger' ]:
-      ensure => directory,
-      owner  => $pure_postgres::postgres_user,
-      group  => $pure_postgres::postgres_group,
-   } ->
+  file { ['/usr/pgpure/cluster_logger', '/var/log/pgpure/cluster_logger' ]:
+    ensure => directory,
+    owner  => $pure_postgres::postgres_user,
+    group  => $pure_postgres::postgres_group,
+  } ->
 
-   file {'/usr/pgpure/cluster_logger/pure_cluster_logger.py':
-      path    => '/usr/pgpure/cluster_logger/pure_cluster_logger.py',
-      ensure  => 'file',
-      source  => 'puppet:///modules/pure_repmgr/pure_cluster_logger.py',
-      owner   => $pure_postgres::postgres_user,
-      group   => $pure_postgres::postgres_group,
-      mode    => '0750',
-   } ->
+  file {'/usr/pgpure/cluster_logger/pure_cluster_logger.py':
+    path   => '/usr/pgpure/cluster_logger/pure_cluster_logger.py',
+    ensure => 'file',
+    source => 'puppet:///modules/pure_repmgr/pure_cluster_logger.py',
+    owner  => $pure_postgres::postgres_user,
+    group  => $pure_postgres::postgres_group,
+    mode   => '0750',
+    notify => Service['pure_cluster_logger.service'],
+  } ->
 
-   file {'/usr/lib/systemd/system/pure_cluster_logger.service':
-      path    => '/usr/lib/systemd/system/pure_cluster_logger.service',
-      ensure  => 'file',
-      source  => 'puppet:///modules/pure_repmgr/pure_cluster_logger.service',
-      owner   => 'root',
-      group   => 'root',
-      mode    => '0644',
-   } ->
+  file {'/usr/lib/systemd/system/pure_cluster_logger.service':
+    path   => '/usr/lib/systemd/system/pure_cluster_logger.service',
+    ensure => 'file',
+    source => 'puppet:///modules/pure_repmgr/pure_cluster_logger.service',
+    owner  => 'root',
+    group  => 'root',
+    mode   => '0644',
+    notify => Exec['systemctl daemon-reload'],
+  } ->
 
-   Service { 'pure_cluster_logger.service':
-      ensure => 'running',
-      enable => true,
-   }
+  service { 'pure_cluster_logger.service':
+    ensure => 'running',
+    enable => true,
+  }
+
+  if ! defined(Exec['systemctl daemon-reload']) {
+    exec { 'systemctl daemon-reload':
+      refreshonly => true,
+      cwd         => '/',
+      path        => '/bin'
+    }
+  }
 
 }
