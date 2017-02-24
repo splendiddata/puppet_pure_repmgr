@@ -5,3 +5,6 @@ node_name=<%= $facts[fqdn] %>
 conninfo='host=<%= $facts[fqdn] %> user=repmgr dbname=repmgr'
 use_replication_slots=1
 pg_bindir=/usr/pgpure/postgres/current/bin/
+<% if $pure_postgres::pg_xlog_dir != $pure_postgres::params::pg_xlog_dir { -%>
+pg_basebackup_options='--xlogdir=<%= $pure_postgres::pg_xlog_dir %>'
+<% } -%>

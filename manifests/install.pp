@@ -3,62 +3,34 @@
 # Installs repmgr from pure repo
 class pure_repmgr::install
 (
-) inherits pure_repmgr::params
+  $pg_data_dir = $pure_repmgr::pg_data_dir,
+  $pg_xlog_dir = $pure_repmgr::pg_xlog_dir,
+) inherits pure_repmgr
 {
 
-   include pure_postgres
    package { 'python-psycopg2':
+      ensure => 'installed',
+   }
+
+   package { 'repmgr':
       ensure => 'installed',
    }
 
    if $facts['pure_cloud_nodeid'] {
 
-      if $facts['pure_cloud_nodeid'] == "1" and size($facts['pure_cloud_available_hosts']) == 0 {
-         class { 'pure_postgres::install':
-            pg_version => $pg_version,
-            do_initdb  => true,
-         }
-      }
-      else {
-         class { 'pure_postgres::install':
-            pg_version => $pg_version,
-            do_initdb  => false,
-         }
+      #By default don't initdb. For intial master, config will include initdb class himself.
+      class { 'pure_postgres':
+         do_initdb   => false,
+         pg_data_dir => $pg_data_dir,
+         pg_xlog_dir => $pg_xlog_dir,
       }
 
-      package { 'repmgr':
-         ensure => 'installed',
+      if $cluster_logger {
+         include pure_repmgr::cluster_logger
       }
-
-      file {'/usr/pgpure/splunk_logger':
-         ensure => directory,
-         owner  => $pure_postgres::postgres_user,
-         group  => $pure_postgres::postgres_group,
-      } ->
-
-      file {'/usr/pgpure/splunk_logger/pure_splunk_logger.py':
-         path    => '/usr/pgpure/splunk_logger/pure_splunk_logger.py',
-         ensure  => 'file',
-         source  => 'puppet:///modules/pure_repmgr/pure_splunk_logger.py',
-         owner   => $pure_postgres::postgres_user,
-         group   => $pure_postgres::postgres_group,
-         mode    => '0750',
-      } ->
-
-      file {'/usr/lib/systemd/system/pure_splunk_logger.service':
-         path    => '/usr/lib/systemd/system/pure_splunk_logger.service',
-         ensure  => 'file',
-         source  => 'puppet:///modules/pure_repmgr/pure_splunk_logger.service',
-         owner   => 'root',
-         group   => 'root',
-         mode    => '0644',
-      }
-
    }
    else {
-      #Also create postgres user with ssh keys in first run
-      class {'pure_postgres::postgres_user':
-      }
+      include pure_postgres::postgres_user
    }
 
 }

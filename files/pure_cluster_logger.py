@@ -34,7 +34,7 @@ def lsn_to_xlogrecptr(lsn):
     xrecoff = int(xrecoff, 16)
     return xlogid * 16 * 1024 * 1024 * 255 + xrecoff
 
-class pg_splunk_logger_exception(SystemError):
+class pg_cluster_logger_exception(SystemError):
     pass
 
 class pg_server():
@@ -123,7 +123,7 @@ class pg_server():
             master_repl_info = master.master_lag_info()
             masterts, masterxlogrecptr = master_repl_info['ts'], lsn_to_xlogrecptr(master_repl_info['xlog_location'])
         except:
-            raise pg_splunk_logger_exception('Cannot detect lag without master lag info')
+            raise pg_cluster_logger_exception('Cannot detect lag without master lag info')
         my_repl_info = self.standby_lag_info()
         if not my_repl_info:
             return None
@@ -177,7 +177,7 @@ class pg_server():
         return True
 
 class pg_cluster():
-    def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/etc/pgpure/splunk_logger/splunk_logger.ini', debug=False, conn_timeout=3):
+    def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/etc/pgpure/cluster_logger/cluster_logger.ini', debug=False, conn_timeout=3):
         self.dns           = dns
         self.postgresport  = postgresport
         self.nodes         = {}
@@ -215,7 +215,7 @@ class pg_cluster():
     def ipsfromdns(self):
         IPs = socket.gethostbyname_ex(self.dns)
         if not IPs:
-            raise pg_splunk_logger_exception('no IPs found by DNS {0}.'.format(self.dns))
+            raise pg_cluster_logger_exception('no IPs found by DNS {0}.'.format(self.dns))
         return sorted(IPs[2])
 
     def update_node_info(self):
@@ -243,7 +243,7 @@ class pg_cluster():
             localnode        = self.nodes[self.local_node_ip]
             state['max_con'] = localnode.config_parameter('max_connections')
             state['con']     = localnode.num_connections()
-        except pg_splunk_logger_exception as e:
+        except pg_cluster_logger_exception as e:
             if self.debug:
                 print_exception(e)
             localnode         = None
@@ -325,13 +325,13 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, signal_term_handler)
 
 
-    settings = process_config_files([ '/etc/repmgr.conf', '/etc/facter/facts.d/pure_cloud_cluster.ini', '/etc/pgpure/postgres/9.6/data/splunk_logger.ini' ])
+    settings = process_config_files([ '/etc/repmgr.conf', '/etc/facter/facts.d/pure_cloud_cluster.ini', '/etc/pgpure/postgres/9.6/data/cluster_logger.ini' ])
 
     default_postgresport = get_default(settings, 'postgresport', 5432)
-    default_interval     = get_default(settings, 'splunk_logger_interval', 1)
+    default_interval     = get_default(settings, 'cluster_logger_interval', 1)
     default_dns          = get_default(settings, 'dnsname', get_default(settings, 'cluster', None))
     default_nodename     = get_default(settings, 'node_name', socket.gethostname())
-    default_logfile      = get_default(settings, 'splunk_logger_logfile', '/var/log/pgpure/splunklogger.log')
+    default_logfile      = get_default(settings, 'cluster_logger_logfile', '/var/log/pgpure/cluster_logger/cluster_logger.log')
     default_conn_timeout = get_default(settings, 'pgsql_connection_timeout', 3)
 
     import argparse
@@ -339,8 +339,8 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--dns', default=default_dns, help='DNS name to read (Without domain, domain name from machine is used).')
     parser.add_argument('-n', '--node_name', default=default_nodename, help='hostname of this node (for local monitoring)')
     parser.add_argument('-p', '--port', default=default_postgresport, help='Port where postgres is running on.')
-    parser.add_argument('-i', '--interval', default=default_interval, help='Interval for checking. splunk_logger will only output changes, ir on kill -USR1')
-    parser.add_argument('-l', '--logfile', default=default_logfile, help='Logfile for writing splunk_log to.')
+    parser.add_argument('-i', '--interval', default=default_interval, help='Interval for checking. cluster_logger will only output changes, ir on kill -USR1')
+    parser.add_argument('-l', '--logfile', default=default_logfile, help='Logfile for writing log to.')
     parser.add_argument('-t', '--conntimeout', default=default_conn_timeout, help='Timeout for postgres connections.')
     parser.add_argument('-x', '--debug', action='store_true', help='Enable debugging.')
 
@@ -371,7 +371,7 @@ if __name__ == "__main__":
             last_state = state
         except KeyboardInterrupt:
             sys.exit(0)
-        except pg_splunk_logger_exception as e:
+        except pg_cluster_logger_exception as e:
             print_exception(e)
 
         try:

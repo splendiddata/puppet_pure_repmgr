@@ -188,7 +188,6 @@ if __name__ == "__main__":
             secondary_site.add(IP_int)
 
     primary_site = sorted(primary_site)
-    initialmaster=int_to_ip(primary_site[0])
     primary_site = [ int_to_ip(IP) for IP in primary_site ]
     secondary_site = [ int_to_ip(IP) for IP in sorted(secondary_site) ]
     all_sites = primary_site + secondary_site

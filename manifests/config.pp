@@ -46,12 +46,17 @@ class pure_repmgr::config
          replace              => false,
       }
 
-      class { 'pure_postgres::config':
-      }
+      include pure_postgres::config
 
       if $nodeid == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
 
-         $replication_role  = pick( $facts['pure_replication_role'], 'master')
+         if $facts['pure_cloud_nodeid'] == "1" and size($facts['pure_cloud_available_hosts']) == 0 {
+            include pure_postgres::initdb
+         }
+
+         if $replication_role == undef {
+            $replication_role  = 'master'
+         }
 
          file { "${pure_postgres::pg_etc_dir}/conf.d/wal.conf":
             ensure  => file,
@@ -72,13 +77,11 @@ class pure_repmgr::config
       }
       elsif size($facts['pure_cloud_available_hosts']) > 0 {
          
-         $replication_role  = pick( $facts['pure_replication_role'], 'standby')
-
          split($facts['pure_cloud_available_hosts'],",").each | String $upstreamhost | {
             pure_repmgr::clone_standby {"clone from $upstreamhost":
                upstreamhost   => $upstreamhost,
-               datadir        => $pg_data_dir,
-               require        => File["${pg_etc_dir}/conf.d"],
+               datadir        => $pure_postgres::pg_data_dir,
+               require        => File["${pure_postgres::pg_etc_dir}/conf.d"],
                before         => Class['pure_postgres::start'],
             }
          }
@@ -91,6 +94,9 @@ class pure_repmgr::config
          }
       }
 
+      if $replication_role == undef {
+         $replication_role  = 'standby'
+      }
 
       split($facts['pure_cloud_nodes'],",").each | String $source | {
          pure_postgres::pg_hba {"pg_hba entry for $source":
@@ -106,10 +112,11 @@ class pure_repmgr::config
       }
 
       class { 'pure_postgres::start':
-      } ->
+      }
 
-      class {'pure_repmgr::register':
-         replication_role  => $replication_role,
+      class { 'pure_postgres::reload':
+         before  => Class['pure_repmgr::register'],
+         require => Class['pure_postgres::start'],
       }
 
       if $replication_role == 'master' {
@@ -125,12 +132,10 @@ class pure_repmgr::config
          }
       }
 
-      class { 'pure_postgres::reload':
-         before  => Class['pure_repmgr::register'],
-         require => Class['pure_postgres::start'],
+      class {'pure_repmgr::register':
+         replication_role => $replication_role,
+         require          => Class['pure_postgres::start'],
       }
-
-
    }
 
 }
