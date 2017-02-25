@@ -71,7 +71,7 @@ class pure_repmgr::config
       file_line { 'wal_log_hints on':
         path   => "$pure_postgres::pg_etc_dir/conf.d/wal.conf",
         line   => 'wal_log_hints = on',
-        before => Class['pure_postgres::start'],
+        notify => Class['pure_postgres::start'],
       }
 
     }
@@ -81,7 +81,7 @@ class pure_repmgr::config
           upstreamhost => $upstreamhost,
           datadir      => $pure_postgres::pg_data_dir,
           require      => File["${pure_postgres::pg_etc_dir}/conf.d"],
-          before       => Class['pure_postgres::start'],
+          notify       => Class['pure_postgres::start'],
         }
       }
 
@@ -105,15 +105,16 @@ class pure_repmgr::config
         source          => "${source}/32",
         connection_type => 'host',
         user            => 'repmgr',
-        before          => Class['pure_postgres::start'],
         notify          => Class['pure_postgres::reload'],
       }
     }
 
     class { 'pure_postgres::start':
+      refreshonly => true,
     }
 
     class { 'pure_postgres::reload':
+      refreshonly => true,
       before  => Class['pure_repmgr::register'],
       require => Class['pure_postgres::start'],
     }
@@ -133,7 +134,7 @@ class pure_repmgr::config
 
     class {'pure_repmgr::register':
       replication_role => $replication_role,
-      require          => Class['pure_postgres::start'],
+      require          => Class['pure_postgres::started'],
     }
   }
 
