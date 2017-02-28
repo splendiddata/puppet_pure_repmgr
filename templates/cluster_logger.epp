@@ -1,0 +1,6 @@
+cluster_logger_max_interval=3600
+#postgresport=5432
+#cluster_logger_min_interval=1
+#cluster_logger_max_interval=86400
+#cluster_logger_logfile=/var/log/pgpure/cluster_logger/cluster_logger.log
+#pgsql_connection_timeout=3
