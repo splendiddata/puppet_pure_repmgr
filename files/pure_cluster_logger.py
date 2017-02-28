@@ -82,6 +82,8 @@ class pg_server():
             return None
         except AttributeError:
             return None
+        except psycopg2.InterfaceError:
+            return None
 
     def replication_role(self):
         is_in_recovery = self.run_sql('SELECT pg_is_in_recovery() as is_in_recovery')
