@@ -2,6 +2,7 @@
 import socket
 import datetime
 import traceback
+import time
  
 try:
     import psycopg2
@@ -191,6 +192,7 @@ class pg_cluster():
         self.logfile_obj   = None
         self.debug         = debug
         self.conn_timeout  = conn_timeout
+        self.last_log      = time.time()
 
     def update_nodelist(self):
         nodes = {}
@@ -288,6 +290,7 @@ class pg_cluster():
 
         self.logfile_obj.write(line+'\n')
         self.logfile_obj.flush()
+        self.last_log = time.time()
 
 def get_default(settngs, key, default):
     try:
@@ -317,7 +320,6 @@ def process_config_files(list_of_config_files, debug=False):
 
 if __name__ == "__main__":
     import sys
-    import time
     import signal
  
     def signal_term_handler(signal, frame):
@@ -330,7 +332,8 @@ if __name__ == "__main__":
     settings = process_config_files([ '/etc/repmgr.conf', '/etc/facter/facts.d/pure_cloud_cluster.ini', '/etc/pgpure/postgres/9.6/data/cluster_logger.ini' ])
 
     default_postgresport = get_default(settings, 'postgresport', 5432)
-    default_interval     = get_default(settings, 'cluster_logger_interval', 1)
+    default_min_interval = get_default(settings, 'cluster_logger_min_interval', 1)
+    default_max_interval = get_default(settings, 'cluster_logger_max_interval', 86400)
     default_dns          = get_default(settings, 'dnsname', get_default(settings, 'cluster', None))
     default_nodename     = get_default(settings, 'node_name', socket.gethostname())
     default_logfile      = get_default(settings, 'cluster_logger_logfile', '/var/log/pgpure/cluster_logger/cluster_logger.log')
@@ -341,7 +344,8 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--dns', default=default_dns, help='DNS name to read (Without domain, domain name from machine is used).')
     parser.add_argument('-n', '--node_name', default=default_nodename, help='hostname of this node (for local monitoring)')
     parser.add_argument('-p', '--port', default=default_postgresport, help='Port where postgres is running on.')
-    parser.add_argument('-i', '--interval', default=default_interval, help='Interval for checking. cluster_logger will only output changes, ir on kill -USR1')
+    parser.add_argument('-i', '--interval', default=default_min_interval, help='Interval for checking.')
+    parser.add_argument(      '--max_interval', default=default_max_interval, help='Max interval for logging. logger will log on changes, kill -USR1, or when this interval expires')
     parser.add_argument('-l', '--logfile', default=default_logfile, help='Logfile for writing log to.')
     parser.add_argument('-t', '--conntimeout', default=default_conn_timeout, help='Timeout for postgres connections.')
     parser.add_argument('-x', '--debug', action='store_true', help='Enable debugging.')
@@ -366,14 +370,17 @@ if __name__ == "__main__":
     last_state = None
     
     while True:
+        now = time.time()
         try:
             state = str(cluster)
-            if state != last_state:
+            if state != last_state or (now - cluster.last_log > int(args.max_interval)):
                 cluster.log_to_file(state)
             last_state = state
         except KeyboardInterrupt:
             sys.exit(0)
         except pg_cluster_logger_exception as e:
+            print_exception(e)
+        except Exception as e:
             print_exception(e)
 
         try:
