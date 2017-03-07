@@ -120,17 +120,15 @@ class pure_repmgr::config
       require => Class['pure_postgres::start'],
     }
 
-    if $replication_role == 'master' {
-      pure_postgres::role {'repmgr':
-        with_db       => true,
-        password_hash => $repmgr_password,
-        superuser     => true,
-        #$user will be expanded by postgres and should not be expanded by puppet.
-        searchpath    => [ "\"repmgr_${pure_cloud_cluster}\"", '"$user"', 'public' ],
-        replication   => true,
-        before        => Class['pure_repmgr::register'],
-        require       => Class['pure_postgres::reload'],
-      }
+    pure_postgres::role {'repmgr':
+      with_db       => true,
+      password_hash => $repmgr_password,
+      superuser     => true,
+      #$user will be expanded by postgres and should not be expanded by puppet.
+      searchpath    => [ "\"repmgr_${pure_cloud_cluster}\"", '"$user"', 'public' ],
+      replication   => true,
+      before        => Class['pure_repmgr::register'],
+      require       => Class['pure_postgres::reload'],
     }
 
     class {'pure_repmgr::register':
