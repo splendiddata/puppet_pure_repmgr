@@ -218,7 +218,7 @@ if __name__ == "__main__":
     facts['pure_cloud_nodeid']            = my_id
     facts['pure_cloud_primarysite']       = primary_site
     facts['pure_cloud_secondarysite']     = secondary_site
-    facts['pure_postgres_ssh_public_key'] = ssh_public_key('/home/postgres/.ssh/id_rsa.pub')
+    facts['pure_postgres_ssh_public_key'] = ssh_public_key('/home/postgres/.ssh/id_ed25519.pub')
     if replication_role:
         facts['pure_replication_role']        = replication_role
 
