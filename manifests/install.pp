@@ -28,6 +28,7 @@ class pure_repmgr::install
       do_initdb   => false,
       pg_data_dir => $pg_data_dir,
       pg_xlog_dir => $pg_xlog_dir,
+      pg_ssl_cn   => $pure_repmgr::dnsname,
     }
 
     if $cluster_logger {
