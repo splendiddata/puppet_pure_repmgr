@@ -3,6 +3,7 @@
 # Configure a replicated cluster with repmgr from pure repo 
 class pure_repmgr::config
 (
+  $repmgr_password = $pure_repmgr::repmgr_password,
 ) inherits pure_repmgr
 {
   file { [  '/etc/facter', '/etc/facter/facts.d' ]:
@@ -122,7 +123,7 @@ class pure_repmgr::config
     if $replication_role == 'master' {
       pure_postgres::role {'repmgr':
         with_db       => true,
-        password_hash => 'repmgr',
+        password_hash => $repmgr_password,
         superuser     => true,
         #$user will be expanded by postgres and should not be expanded by puppet.
         searchpath    => [ "\"repmgr_${pure_cloud_cluster}\"", '"$user"', 'public' ],

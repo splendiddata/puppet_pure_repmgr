@@ -7,5 +7,6 @@ class pure_repmgr::params
   $max_wal_senders       = 10
   $max_replication_slots = 3
   $cluster_logger        = true
+  $repmgr_password       = 'repmgr'
 }
 
