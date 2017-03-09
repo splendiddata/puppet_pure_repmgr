@@ -1,0 +1,10 @@
+/var/log/pgpure/cluster_logger/*.log {
+  size=10M
+  missingok
+  rotate 10
+  compress
+  copytruncate
+  delaycompress
+  notifempty
+  weekly
+}

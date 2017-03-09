@@ -18,6 +18,14 @@ class pure_repmgr::cluster_logger
     }
   }
 
+  file {'/etc/logrotate.d/pure-cluster-logger':
+    ensure => 'file',
+    source => 'puppet:///modules/pure_repmgr/logrotate_cluster_logger',
+    owner  => 'root',
+    group  => 'root',
+    mode   => '0644',
+  }
+
   pure_postgres::role {'pure_cluster_logger':
     canlogin => true,
   } ->
