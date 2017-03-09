@@ -253,12 +253,14 @@ class pg_cluster():
             localnode        = self.nodes[self.local_node_ip]
             state['max_con'] = localnode.config_parameter('max_connections')
             state['con']     = localnode.num_connections()
+            state['role']    = localnode.replication_role()
         except pg_cluster_logger_exception as e:
             if self.debug:
                 print_exception(e)
             localnode         = None
             state['max_con'] = -1
             state['con']     = -1
+            state['role']    = 'unknown'
 
         try:
             lag              = localnode.lag_info(self.master)
@@ -270,6 +272,10 @@ class pg_cluster():
             state['lag_sec']     = lag[0]
             state['lag_replay']  = lag[1]
             state['lag_receive'] = lag[2]
+        else:
+            state['lag_sec']     = 0
+            state['lag_replay']  = 0
+            state['lag_receive'] = 0
 
         nodes_level = [ 0, 0, 0, 0 ]
         for k in self.nodes:
