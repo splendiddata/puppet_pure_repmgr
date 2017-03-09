@@ -3,6 +3,7 @@ Description=Postgrespure cluster logger
 After=network.target
 
 [Service]
+User=pure_cluster_logger
 ExecStart=/usr/pgpure/cluster_logger/pure_cluster_logger.py
 ExecReload=/bin/kill -USR1 $MAINPID
 ExecStop=/bin/kill -SIGTERM $MAINPID

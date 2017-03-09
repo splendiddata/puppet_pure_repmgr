@@ -53,11 +53,14 @@ class pg_server():
             pass
 
     def connect(self):
-        if self.cn:
-            if self.replication_role() != 'unknown':
-                return True            
         try:
-            self.cn  = psycopg2.connect(database="repmgr", user="repmgr", host=self.ip, port=self.port, connect_timeout=self.timeout)
+            if self.cn.closed == 0:
+                if self.replication_role() != 'unknown':
+                    return True
+        except:
+            pass
+        try:
+            self.cn  = psycopg2.connect(database="postgres", user="pure_cluster_logger", host=self.ip, port=self.port, connect_timeout=self.timeout)
             self.cn.autocommit = True
             return True
         except psycopg2.OperationalError as e:
@@ -67,7 +70,10 @@ class pg_server():
             return False
 
     def run_sql(self, sql, params=None):
-        if not self.cn:
+        try:
+            if self.cn.closed != 0:
+                raise Exception('Connection closed')
+        except:
             self.connect()
         try:
             cur=self.cn.cursor()
