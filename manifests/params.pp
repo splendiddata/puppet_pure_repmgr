@@ -10,5 +10,6 @@ class pure_repmgr::params
   #You can generate a md5 password with 
   #python -c "import hashlib ; print('md5'+hashlib.md5('$MYPASSWORD$MYUSER'.encode()).hexdigest())"
   $repmgr_password       = 'md58ea99ab1ec3bd8d8a6162df6c8e1ddcd'
+  $replication_password  = 'md5fea8040a27d261e5ce47cacd41b48a90'
 }
 

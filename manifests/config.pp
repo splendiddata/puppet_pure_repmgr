@@ -99,7 +99,7 @@ class pure_repmgr::config
     }
 
     split($facts['pure_cloud_nodes'],",").each | String $source | {
-      pure_postgres::pg_hba {"pg_hba entry for $source":
+      pure_postgres::pg_hba {"pg_hba entry for repmgr from $source":
         database        => 'repmgr,replication',
         method          => 'trust',
         state           => 'present',
@@ -129,6 +129,24 @@ class pure_repmgr::config
       replication   => true,
       before        => Class['pure_repmgr::register'],
       require       => Class['pure_postgres::reload'],
+    }
+
+    pure_postgres::role {'replication':
+      password_hash => $replication_password,
+      replication   => true,
+      canlogin      => true,
+    }
+
+    split($facts['pure_cloud_nodes'],",").each | String $source | {
+      pure_postgres::pg_hba {"pg_hba entry for replication from $source":
+        database        => 'replication',
+        method          => 'trust',
+        state           => 'present',
+        source          => "${source}/32",
+        connection_type => 'host',
+        user            => 'replication',
+        notify          => Class['pure_postgres::reload'],
+      }
     }
 
     class {'pure_repmgr::register':

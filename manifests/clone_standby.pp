@@ -7,7 +7,7 @@ define pure_repmgr::clone_standby(
 {
 
   $check_cmd = shellquote( '/bin/ssh', '-o', 'NumberOfPasswordPrompts 0', $upstreamhost, 'ls' )
-  $clone_cmd = shellquote( "$pure_postgres::pg_bin_dir/repmgr", '-f', "${pure_repmgr::repmgr_conf}", '-h', $upstreamhost, '-U', 'repmgr', '-d', 'repmgr', '-D', $datadir ,'--copy-external-config-files', 'standby', 'clone')
+  $clone_cmd = shellquote( "$pure_postgres::pg_bin_dir/repmgr", '-f', "${pure_repmgr::repmgr_conf}", '-h', $upstreamhost, '-U', 'repmgr', '-d', 'repmgr', '-D', $datadir ,'--copy-external-config-files', '--replication-user', 'replication', 'standby', 'clone')
 
   exec { "exec $clone_cmd":
     user    => $pure_postgres::postgres_user,
