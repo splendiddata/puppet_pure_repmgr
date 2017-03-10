@@ -185,6 +185,12 @@ class pg_server():
         s.close()
         return True
 
+    def starttime(self):
+        result = self.run_sql('select pg_postmaster_start_time() as starttime')
+        if result:
+            return result[0]['starttime']
+        return None
+
 class pg_cluster():
     def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/etc/pgpure/cluster_logger/cluster_logger.ini', debug=False, conn_timeout=3):
         self.dns           = dns
@@ -250,17 +256,19 @@ class pg_cluster():
             state['master'] = 'unknown'
 
         try:
-            localnode        = self.nodes[self.local_node_ip]
-            state['max_con'] = localnode.config_parameter('max_connections')
-            state['con']     = localnode.num_connections()
-            state['role']    = localnode.replication_role()
+            localnode          = self.nodes[self.local_node_ip]
+            state['max_con']   = localnode.config_parameter('max_connections')
+            state['con']       = localnode.num_connections()
+            state['role']      = localnode.replication_role()
+            state['starttime'] = localnode.starttime().strftime('%s')
         except pg_cluster_logger_exception as e:
             if self.debug:
                 print_exception(e)
-            localnode         = None
-            state['max_con'] = -1
-            state['con']     = -1
-            state['role']    = 'unknown'
+            localnode          = None
+            state['max_con']   = -1
+            state['con']       = -1
+            state['role']      = 'unknown'
+            state['starttime'] = '-1'
 
         try:
             lag              = localnode.lag_info(self.master)
