@@ -100,7 +100,7 @@ class pure_repmgr::config
 
     split($facts['pure_cloud_nodes'],",").each | String $source | {
       pure_postgres::pg_hba {"pg_hba entry for repmgr from $source":
-        database        => 'repmgr,replication',
+        database        => 'repmgr',
         method          => 'trust',
         state           => 'present',
         source          => "${source}/32",
@@ -126,7 +126,6 @@ class pure_repmgr::config
       superuser     => true,
       #$user will be expanded by postgres and should not be expanded by puppet.
       searchpath    => [ "\"repmgr_${pure_cloud_cluster}\"", '"$user"', 'public' ],
-      replication   => true,
       before        => Class['pure_repmgr::register'],
       require       => Class['pure_postgres::reload'],
     }
