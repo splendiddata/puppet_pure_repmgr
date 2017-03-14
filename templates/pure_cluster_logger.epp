@@ -186,10 +186,11 @@ class pg_server():
         return True
 
     def starttime(self):
-        result = self.run_sql('select pg_postmaster_start_time() as starttime')
-        if result:
-            return result[0]['starttime']
-        return None
+        try:
+            result = self.run_sql('select pg_postmaster_start_time() as starttime')
+            return result[0]['starttime'].strftime('%s')
+        except:
+            return None
 
 class pg_cluster():
     def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/etc/pgpure/cluster_logger/cluster_logger.ini', debug=False, conn_timeout=3):
@@ -260,7 +261,7 @@ class pg_cluster():
             state['max_con']   = localnode.config_parameter('max_connections')
             state['con']       = localnode.num_connections()
             state['role']      = localnode.replication_role()
-            state['starttime'] = localnode.starttime().strftime('%s')
+            state['starttime'] = localnode.starttime()
         except pg_cluster_logger_exception as e:
             if self.debug:
                 print_exception(e)
