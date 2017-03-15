@@ -10,7 +10,7 @@ class pure_repmgr
   $pg_xlog_dir          = $pure_postgres::params::pg_xlog_dir,
   $repmgr_password      = $pure_repmgr::params::repmgr_password,
   $replication_password = $pure_repmgr::params::replication_password,
-
+  $buffercache          = $pure_repmgr::params::buffercache,
 ) inherits pure_repmgr::params
 {
   class { 'pure_repmgr::install':

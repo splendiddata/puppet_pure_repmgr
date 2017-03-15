@@ -192,8 +192,19 @@ class pg_server():
         except:
             return None
 
+    def buffercache_usage(self):
+        try:
+            bc_stats = {}
+            result = self.run_sql("select CASE (reldatabase IS NULL) WHEN true THEN 'bc_free' ELSE 'bc_used' END AS state, count(*) AS num from pg_buffercache b group by (reldatabase IS NULL)")
+            print(result)
+            for r in result:
+                bc_stats[r['state']] = r['num']
+            return bc_stats
+        except:
+            return {'bc_free': -1, 'bc_used': -1}
+
 class pg_cluster():
-    def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/etc/pgpure/cluster_logger/cluster_logger.ini', debug=False, conn_timeout=3):
+    def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/etc/pgpure/cluster_logger/cluster_logger.ini', debug=False, conn_timeout=3, bc_interval=60):
         self.dns           = dns
         self.postgresport  = postgresport
         self.nodes         = {}
@@ -206,6 +217,8 @@ class pg_cluster():
         self.debug         = debug
         self.conn_timeout  = conn_timeout
         self.last_log      = time.time()
+        self.bc_interval   = bc_interval
+        self.last_bc_check = 0
 
     def update_nodelist(self):
         nodes = {}
@@ -262,6 +275,9 @@ class pg_cluster():
             state['con']       = localnode.num_connections()
             state['role']      = localnode.replication_role()
             state['starttime'] = localnode.starttime()
+            bc_usage           = localnode.buffercache_usage()
+            for key in ['bc_free','bc_used']:
+                state[key] = bc_usage[key]
         except pg_cluster_logger_exception as e:
             if self.debug:
                 print_exception(e)
@@ -270,6 +286,8 @@ class pg_cluster():
             state['con']       = -1
             state['role']      = 'unknown'
             state['starttime'] = '-1'
+            for key in ['bc_free','bc_used']:
+                state[key] = -1
 
         try:
             lag              = localnode.lag_info(self.master)
@@ -359,15 +377,17 @@ if __name__ == "__main__":
     default_nodename     = get_default(settings, 'node_name', socket.gethostname())
     default_logfile      = get_default(settings, 'cluster_logger_logfile', '/var/log/pgpure/cluster_logger/cluster_logger.log')
     default_conn_timeout = get_default(settings, 'pgsql_connection_timeout', 3)
+    default_bc_interval  = get_default(settings, 'buffercache_interval', 60)
 
     import argparse
     parser = argparse.ArgumentParser(description='Check cluster status and log.')
+    parser.add_argument('-b', '--bcinterval', default=default_bc_interval, help='Interval for checking buffercache.')
     parser.add_argument('-d', '--dns', default=default_dns, help='DNS name to read (Without domain, domain name from machine is used).')
-    parser.add_argument('-n', '--node_name', default=default_nodename, help='hostname of this node (for local monitoring)')
-    parser.add_argument('-p', '--port', default=default_postgresport, help='Port where postgres is running on.')
     parser.add_argument('-i', '--interval', default=default_min_interval, help='Interval for checking.')
-    parser.add_argument(      '--max_interval', default=default_max_interval, help='Max interval for logging. logger will log on changes, kill -USR1, or when this interval expires')
     parser.add_argument('-l', '--logfile', default=default_logfile, help='Logfile for writing log to.')
+    parser.add_argument('-m', '--maxinterval', default=default_max_interval, help='Max interval for logging.')
+    parser.add_argument('-n', '--nodename', default=default_nodename, help='hostname of this node (for local monitoring)')
+    parser.add_argument('-p', '--port', default=default_postgresport, help='Port where postgres is running on.')
     parser.add_argument('-t', '--conntimeout', default=default_conn_timeout, help='Timeout for postgres connections.')
     parser.add_argument('-x', '--debug', action='store_true', help='Enable debugging.')
 
@@ -386,7 +406,7 @@ if __name__ == "__main__":
     else:
         dns = args.dns
 
-    cluster = pg_cluster(dns, postgresport=args.port, local_node_name=socket.gethostname(), logfile=args.logfile, debug=args.debug, conn_timeout=args.conntimeout)
+    cluster = pg_cluster(dns, postgresport=args.port, local_node_name=args.nodename, logfile=args.logfile, debug=args.debug, conn_timeout=args.conntimeout)
     signal.signal(signal.SIGUSR1, lambda x, y: cluster.log_to_file())
     last_state = None
     
@@ -394,7 +414,7 @@ if __name__ == "__main__":
         now = time.time()
         try:
             state = str(cluster)
-            if state != last_state or (now - cluster.last_log > int(args.max_interval)):
+            if state != last_state or (now - cluster.last_log > int(args.maxinterval)):
                 cluster.log_to_file(state)
             last_state = state
         except KeyboardInterrupt:

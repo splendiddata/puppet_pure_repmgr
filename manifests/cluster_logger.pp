@@ -3,8 +3,33 @@
 # Installs cluster_logger for cluster aware state logging
 class pure_repmgr::cluster_logger
 (
+  $buffercache = $pure_repmgr::buffercache,
 ) inherits pure_repmgr
 {
+
+  if $buffercache {
+    ensure_resource('package', $pure_postgres::pg_package_contrib, {'ensure' => 'present'})
+
+    pure_postgres::extension{ 'pg_buffercache':
+      require => Package[$pg_package_contrib],
+    }
+
+    pure_postgres::grant{ 'select on pg_buffercache to pure_cluster_logger':
+      permission  => 'select',
+      object      => 'pg_buffercache',
+      object_type => 'table',
+      role        => 'pure_cluster_logger',
+      require     => [ Pure_postgres::Role['pure_cluster_logger'], Pure_postgres::Extension['pg_buffercache'] ],
+    }
+
+    pure_postgres::grant{ 'execute on pg_buffercache_pages to pure_cluster_logger':
+      permission  => 'execute',
+      object      => 'pg_buffercache_pages()',
+      object_type => 'function',
+      role        => 'pure_cluster_logger',
+      require     => [ Pure_postgres::Role['pure_cluster_logger'], Pure_postgres::Extension['pg_buffercache'] ],
+    } 
+  }
 
   split($facts['pure_cloud_nodes'],",").each | String $source | {
     pure_postgres::pg_hba {"pg_hba entry for pure_cluster_logger from $source":

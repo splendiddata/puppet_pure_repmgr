@@ -8,7 +8,7 @@ class pure_repmgr::install
 ) inherits pure_repmgr
 {
 
-  package {$pure_postgres::params::pg_package_libs_name:
+  package {$pure_postgres::params::pg_package_libs:
     ensure => 'installed',
     before => Package['python-psycopg2', 'repmgr'],
   }

@@ -1,4 +1,12 @@
 cluster_logger_max_interval=3600
+<% if $buffercache { -%>
+#Interval for checking buffercache usage
+buffercache_interval=60
+<% } -%>
+<% if ! $buffercache { -%>
+#Disable for checking buffercache usage
+buffercache_interval=-1
+<% } -%>
 #postgresport=5432
 #cluster_logger_min_interval=1
 #cluster_logger_max_interval=86400
