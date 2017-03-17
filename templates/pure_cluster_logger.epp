@@ -196,7 +196,6 @@ class pg_server():
         try:
             bc_stats = {}
             result = self.run_sql("select CASE (reldatabase IS NULL) WHEN true THEN 'bc_free' ELSE 'bc_used' END AS state, count(*) AS num from pg_buffercache b group by (reldatabase IS NULL)")
-            print(result)
             for r in result:
                 bc_stats[r['state']] = r['num']
             return bc_stats
@@ -275,9 +274,13 @@ class pg_cluster():
             state['con']       = localnode.num_connections()
             state['role']      = localnode.replication_role()
             state['starttime'] = localnode.starttime()
-            bc_usage           = localnode.buffercache_usage()
+            now = time.time()
+            if now - self.last_bc_check > self.bc_interval:
+                self.bc_usage  = localnode.buffercache_usage()
+                self.last_bc_check = now
             for key in ['bc_free','bc_used']:
-                state[key] = bc_usage[key]
+                state[key] = self.bc_usage[key]
+
         except pg_cluster_logger_exception as e:
             if self.debug:
                 print_exception(e)
