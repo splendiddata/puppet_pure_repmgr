@@ -13,6 +13,9 @@ class pure_repmgr
   $buffercache          = $pure_repmgr::params::buffercache,
 ) inherits pure_repmgr::params
 {
+
+  include pure_postgres::params
+
   class { 'pure_repmgr::install':
   } ->
 
