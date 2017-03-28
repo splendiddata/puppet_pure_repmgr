@@ -1,0 +1,24 @@
+    {
+      "name": "pure_remgr",
+      "version": "0.9.2",
+      "author": "Joint venture of KPN and Splendid Data",
+      "license": "GPLv3.0",
+      "summary": "A module for deploying a replicated postgres cluster with packages from PostgresPure distribution",
+      "source": "https://github.com/sebasmannem/puppet_pure_repmgr/",
+      "project_page": "https://github.com/sebasmannem/puppet_pure_repmgr/",
+      "issues_url": "https://github.com/sebasmannem/puppet_pure_repmgr/issues",
+      "tags": ["repmgr", "postgrespure"],
+      "operatingsystem_support": [
+        {
+        "operatingsystem":"RedHat",
+        "operatingsystemrelease":[ "7.0" ]
+        },
+        {
+        "operatingsystem": "CentOS",
+        "operatingsystemrelease": [ "7.0" ]
+        }
+       ],
+      "dependencies": [
+        { "name": "pure_postgres", "version_requirement": ">= 0.9.1 < 0.9.3" }
+      ]
+    }
