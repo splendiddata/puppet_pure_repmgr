@@ -20,7 +20,6 @@ class pure_repmgr::config
     group   => 'root',
     mode    => '0644',
     require => File['/etc/facter/facts.d'],
-    replace =>  false,
   }
 
   file { 'pure_cloud_cluster.py':
