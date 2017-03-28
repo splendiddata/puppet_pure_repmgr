@@ -15,7 +15,8 @@ class pure_repmgr::register(
   }
 
   $cmd = shellquote( "${pure_postgres::params::pg_bin_dir}/repmgr", '-f', $pure_repmgr::params::repmgr_conf, $replication_role, 'register')
-  $unless = shellquote("${pure_postgres::params::pg_bin_dir}/psql", '-d', 'repmgr', '--quiet', '--tuples-only', '-c', "select * from repmgr_${pure_cloud_cluster}.repl_nodes where name='${fqdn}'" )
+  $unless = shellquote( "${pure_postgres::params::pg_bin_dir}/psql", '-d', 'repmgr', '--quiet', '--tuples-only',
+                        '-c', "select * from repmgr_${facts['pure_cloud_cluster']}.repl_nodes where name='${facts['fqdn']}'" )
 
   exec { "exec ${cmd}":
     user    => $pure_postgres::postgres_user,

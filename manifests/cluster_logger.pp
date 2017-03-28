@@ -8,10 +8,10 @@ class pure_repmgr::cluster_logger
 {
 
   if $buffercache {
-    ensure_resource('package', $pure_postgres::pg_package_contrib, {'ensure' => 'present'})
+    ensure_resource('package', $pure_postgres::params::pg_package_contrib, {'ensure' => 'present'})
 
     pure_postgres::extension{ 'pg_buffercache':
-      require => Package[$pg_package_contrib],
+      require => Package[$pure_postgres::params::pg_package_contrib],
     }
 
     pure_postgres::grant{ 'select on pg_buffercache to pure_cluster_logger':
@@ -28,11 +28,11 @@ class pure_repmgr::cluster_logger
       object_type => 'function',
       role        => 'pure_cluster_logger',
       require     => [ Pure_postgres::Role['pure_cluster_logger'], Pure_postgres::Extension['pg_buffercache'] ],
-    } 
+    }
   }
 
-  split($facts['pure_cloud_nodes'],",").each | String $source | {
-    pure_postgres::pg_hba {"pg_hba entry for pure_cluster_logger from $source":
+  split($facts['pure_cloud_nodes'],',').each | String $source | {
+    pure_postgres::pg_hba {"pg_hba entry for pure_cluster_logger from ${source}":
       database        => 'postgres',
       method          => 'trust',
       state           => 'present',
@@ -82,8 +82,8 @@ class pure_repmgr::cluster_logger
   } ->
 
   file {'/usr/pgpure/cluster_logger/pure_cluster_logger.py':
-    path    => '/usr/pgpure/cluster_logger/pure_cluster_logger.py',
     ensure  => 'file',
+    path    => '/usr/pgpure/cluster_logger/pure_cluster_logger.py',
     content => epp('pure_repmgr/pure_cluster_logger.epp'),
     owner   => 'pure_cluster_logger',
     group   => 'pgpure',
@@ -92,15 +92,15 @@ class pure_repmgr::cluster_logger
   } ->
 
   file {'/var/log/pgpure/cluster_logger/cluster_logger.log':
-    ensure  => 'file',
-    owner   => 'pure_cluster_logger',
-    group   => 'pgpure',
-    mode    => '0640',
+    ensure => 'file',
+    owner  => 'pure_cluster_logger',
+    group  => 'pgpure',
+    mode   => '0640',
   } ->
 
   file {'/usr/lib/systemd/system/pure_cluster_logger.service':
-    path   => '/usr/lib/systemd/system/pure_cluster_logger.service',
     ensure => 'file',
+    path   => '/usr/lib/systemd/system/pure_cluster_logger.service',
     source => 'puppet:///modules/pure_repmgr/pure_cluster_logger.service',
     owner  => 'root',
     group  => 'root',

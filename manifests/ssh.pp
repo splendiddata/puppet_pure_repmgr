@@ -7,7 +7,7 @@ class pure_repmgr::ssh
 {
 
   if $facts['pure_postgres_ssh_public_key_key'] {
-    @@ssh_authorized_key { "postgres@${fqdn}":
+    @@ssh_authorized_key { "postgres@${::fqdn}":
       ensure => present,
       type   => $facts['pure_postgres_ssh_public_key_type'],
       key    => $facts['pure_postgres_ssh_public_key_key'],

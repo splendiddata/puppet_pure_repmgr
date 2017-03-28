@@ -23,8 +23,8 @@ class pure_repmgr::config
   }
 
   file { 'pure_cloud_cluster.py':
-    path    => '/etc/facter/facts.d/pure_cloud_cluster.py',
     ensure  => 'file',
+    path    => '/etc/facter/facts.d/pure_cloud_cluster.py',
     source  => 'puppet:///modules/pure_repmgr/pure_cloud_cluster.py',
     owner   => 'root',
     group   => 'root',
@@ -37,7 +37,7 @@ class pure_repmgr::config
 
     include pure_repmgr::ssh
 
-    file { "${repmgr_conf}":
+    file { $pure_repmgr::params::repmgr_conf:
       ensure  => file,
       content => epp('pure_repmgr/repmgr.epp'),
       owner   => 'postgres',
@@ -50,7 +50,7 @@ class pure_repmgr::config
 
     if $nodeid == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
 
-      if $facts['pure_cloud_nodeid'] == "1" and size($facts['pure_cloud_available_hosts']) == 0 {
+      if $facts['pure_cloud_nodeid'] == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
         include pure_postgres::initdb
       }
 
@@ -69,15 +69,15 @@ class pure_repmgr::config
       } ->
 
       file_line { 'wal_log_hints on':
-        path   => "$pure_postgres::pg_etc_dir/conf.d/wal.conf",
+        path   => "${pure_postgres::pg_etc_dir}/conf.d/wal.conf",
         line   => 'wal_log_hints = on',
         notify => Class['pure_postgres::start'],
       }
 
     }
     elsif size($facts['pure_cloud_available_hosts']) > 0 {
-      split($facts['pure_cloud_available_hosts'],",").each | String $upstreamhost | {
-        pure_repmgr::clone_standby {"clone from $upstreamhost":
+      split($facts['pure_cloud_available_hosts'],',').each | String $upstreamhost | {
+        pure_repmgr::clone_standby {"clone from ${upstreamhost}":
           upstreamhost => $upstreamhost,
           datadir      => $pure_postgres::pg_data_dir,
           require      => File["${pure_postgres::pg_etc_dir}/conf.d"],
@@ -87,8 +87,8 @@ class pure_repmgr::config
 
     }
     else {
-      notify { "standby in empty cluster":
-        message  => "This is no initial master (ID $nodeid) and there are no running database servers yet.",
+      notify { 'standby in empty cluster':
+        message  => "This is no initial master (ID ${nodeid}) and there are no running database servers yet.",
         withpath => true,
       }
     }
@@ -97,8 +97,8 @@ class pure_repmgr::config
       $replication_role  = 'standby'
     }
 
-    split($facts['pure_cloud_nodes'],",").each | String $source | {
-      pure_postgres::pg_hba {"pg_hba entry for repmgr from $source":
+    split($facts['pure_cloud_nodes'],',').each | String $source | {
+      pure_postgres::pg_hba {"pg_hba entry for repmgr from ${source}":
         database        => 'repmgr',
         method          => 'trust',
         state           => 'present',
@@ -115,8 +115,8 @@ class pure_repmgr::config
 
     class { 'pure_postgres::reload':
       refreshonly => true,
-      before  => Class['pure_repmgr::register'],
-      require => Class['pure_postgres::start'],
+      before      => Class['pure_repmgr::register'],
+      require     => Class['pure_postgres::start'],
     }
 
     pure_postgres::role {'repmgr':
@@ -124,19 +124,19 @@ class pure_repmgr::config
       password_hash => $repmgr_password,
       superuser     => true,
       #$user will be expanded by postgres and should not be expanded by puppet.
-      searchpath    => [ "\"repmgr_${pure_cloud_cluster}\"", '"$user"', 'public' ],
+      searchpath    => [ "\"repmgr_${facts['pure_cloud_cluster']}\"", '"$user"', 'public' ],
       before        => Class['pure_repmgr::register'],
       require       => Class['pure_postgres::reload'],
     }
 
     pure_postgres::role {'replication':
-      password_hash => $replication_password,
+      password_hash => $pure_repmgr::replication_password,
       replication   => true,
       canlogin      => true,
     }
 
-    split($facts['pure_cloud_nodes'],",").each | String $source | {
-      pure_postgres::pg_hba {"pg_hba entry for replication from $source":
+    split($facts['pure_cloud_nodes'],',').each | String $source | {
+      pure_postgres::pg_hba {"pg_hba entry for replication from ${source}":
         database        => 'replication',
         method          => 'trust',
         state           => 'present',

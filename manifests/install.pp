@@ -31,7 +31,7 @@ class pure_repmgr::install
       pg_ssl_cn   => $pure_repmgr::dnsname,
     }
 
-    if $cluster_logger {
+    if $pure_repmgr::cluster_logger {
       include pure_repmgr::cluster_logger
     }
   }
