@@ -54,9 +54,7 @@ class pure_repmgr::config
         include pure_postgres::initdb
       }
 
-      if $replication_role == undef {
-        $replication_role  = 'master'
-      }
+      $replication_role  = 'master'
 
       file { "${pure_postgres::pg_etc_dir}/conf.d/wal.conf":
         ensure  => file,
@@ -76,6 +74,14 @@ class pure_repmgr::config
 
     }
     elsif size($facts['pure_cloud_available_hosts']) > 0 {
+
+      if $facts['pure_replication_role'] == 'master' {
+        $replication_role  = 'master'
+      }
+      else {
+        $replication_role  = 'standby'
+      }
+
       split($facts['pure_cloud_available_hosts'],',').each | String $upstreamhost | {
         pure_repmgr::clone_standby {"clone from ${upstreamhost}":
           upstreamhost => $upstreamhost,
@@ -91,10 +97,7 @@ class pure_repmgr::config
         message  => "This is no initial master (ID ${nodeid}) and there are no running database servers yet.",
         withpath => true,
       }
-    }
-
-    if $replication_role == undef {
-      $replication_role  = 'standby'
+      $replication_role = undef
     }
 
     split($facts['pure_cloud_nodes'],',').each | String $source | {

@@ -1,9 +1,9 @@
 cluster_logger_max_interval=3600
-<% if $buffercache { -%>
+<% if $pure_repmgr::params::buffercache { -%>
 #Interval for checking buffercache usage
 buffercache_interval=60
 <% } -%>
-<% if ! $buffercache { -%>
+<% if ! $pure_repmgr::params::buffercache { -%>
 #Disable for checking buffercache usage
 buffercache_interval=-1
 <% } -%>
