@@ -1,0 +1,12 @@
+[Unit]
+Description=Repmgr daemon service
+After=postgres-9.6@%i.service
+
+[Service]
+User=postgres
+ExecStart=/usr/local/bin/repmgrd -f /etc/repmgr-%i.conf --verbose
+ExecReload=/bin/kill -USR1 $MAINPID
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target
