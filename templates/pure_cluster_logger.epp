@@ -40,11 +40,13 @@ class pg_cluster_logger_exception(SystemError):
 
 class pg_server():
     def __init__(self, ip, port=5432, debug=False, conn_timeout=3):
-        self.ip      = ip
-        self.port    = port
-        self.cn      = None
-        self.debug   = debug
-        self.timeout = conn_timeout
+        self.ip               = ip
+        self.port             = port
+        self.cn               = None
+        self.debug            = debug
+        self.timeout          = conn_timeout
+        self.curr_starttime   = None
+        self.replay_timestamp = None
 
     def __del__(self):
         try:
@@ -138,6 +140,11 @@ class pg_server():
             return None
 
         myts         = my_repl_info['replay_timestamp']
+        if not self.replay_timestamp:
+            self.replay_timestamp = myts
+        elif myts < self.replay_timestamp:
+            print('Not reporting lag info. Invalid data. Previous replay ts ({0}) > current replay ts ({1})'.format(self.replay_timestamp, myts))
+            return None
         myxlogrecptr = lsn_to_xlogrecptr(my_repl_info['receive_location'])
         myxlogrepptr = lsn_to_xlogrecptr(my_repl_info['replay_location'])
 
@@ -188,7 +195,14 @@ class pg_server():
     def starttime(self):
         try:
             result = self.run_sql('select pg_postmaster_start_time() as starttime')
-            return result[0]['starttime'].strftime('%s')
+            starttime = result[0]['starttime'].strftime('%s')
+            if not self.curr_starttime:
+                self.curr_starttime   = starttime
+                self.replay_timestamp = None
+            elif self.curr_starttime != starttime:
+                print('{0}: resetting self.replay_timestamp'.format(self.ip))
+                self.replay_timestamp = None
+            return starttime
         except:
             return None
 
