@@ -126,6 +126,8 @@ class pure_repmgr::config
       with_db       => true,
       password_hash => $repmgr_password,
       superuser     => true,
+      #workaround, since repmgr can currently not handle switchover with other user for replication
+      replication   => true,
       #$user will be expanded by postgres and should not be expanded by puppet.
       searchpath    => [ "\"repmgr_${facts['pure_cloud_cluster']}\"", '"$user"', 'public' ],
       before        => Class['pure_repmgr::register'],
@@ -145,7 +147,8 @@ class pure_repmgr::config
         state           => 'present',
         source          => "${source}/32",
         connection_type => 'host',
-        user            => 'replication',
+        #workaround, since repmgr can currently not handle switchover with other user for replication
+        user            => 'replication,repmgr',
         notify          => Class['pure_postgres::reload'],
       }
     }
