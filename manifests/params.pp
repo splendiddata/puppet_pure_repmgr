@@ -5,7 +5,7 @@ class pure_repmgr::params
   $repmgr_conf           = "${repmgr_conf_dir}/repmgr.conf"
   $wal_keep_segments     = 100
   $max_wal_senders       = 10
-  $max_replication_slots = 3
+  $max_replication_slots = 4
   $cluster_logger        = true
   #You can generate a md5 password with 
   #python -c "import hashlib ; print('md5'+hashlib.md5('$MYPASSWORD$MYUSER'.encode()).hexdigest())"
