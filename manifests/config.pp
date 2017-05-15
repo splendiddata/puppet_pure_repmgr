@@ -63,7 +63,7 @@ class pure_repmgr::config
         group   => 'postgres',
         mode    => '0640',
         require => [ Class['pure_postgres::config'], File["${pure_postgres::pg_etc_dir}/conf.d"] ],
-        replace => false,
+        replace => true,
       } ->
 
       file_line { 'wal_log_hints on':
