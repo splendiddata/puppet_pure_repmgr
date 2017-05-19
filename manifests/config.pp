@@ -157,6 +157,12 @@ class pure_repmgr::config
       replication_role => $replication_role,
       require          => Class['pure_postgres::started'],
     }
+
+    if $pure_repmgr::barman_server {
+      class {'pure_barman::client':
+        barman_server => pure_repmgr::barman_server,
+      }
+    }
   }
 
 }

@@ -11,6 +11,7 @@ class pure_repmgr
   $repmgr_password      = $pure_repmgr::params::repmgr_password,
   $replication_password = $pure_repmgr::params::replication_password,
   $buffercache          = $pure_repmgr::params::buffercache,
+  $barman_server        = undef,
 ) inherits pure_repmgr::params
 {
 

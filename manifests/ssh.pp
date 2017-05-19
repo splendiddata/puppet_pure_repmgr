@@ -3,7 +3,7 @@
 # Configure a replicated cluster with repmgr from pure repo 
 class pure_repmgr::ssh
 (
-) inherits pure_repmgr
+)
 {
 
   if $facts['pure_postgres_ssh_public_key_key'] {
@@ -18,29 +18,9 @@ class pure_repmgr::ssh
 
   Ssh_authorized_key <<| tag == $facts['pure_cloud_clusterdns'] |>>
 
-  @@sshkey { $facts['fqdn']:
-    type => ecdsa-sha2-nistp256,
-    key  => $::sshecdsakey,
-    tag  => $facts['pure_cloud_clusterdns'],
+  class { 'pure_postgres::ssh':
+    tags => [ $facts['pure_cloud_clusterdns'], pure_repmgr::barman_server ],
   }
-
-  @@sshkey { "${facts['fqdn']}_${facts['networking']['ip']}":
-    name => $facts['networking']['ip'],
-    type => ecdsa-sha2-nistp256,
-    key  => $::sshecdsakey,
-    tag  => $facts['pure_cloud_clusterdns'],
-  }
-
-  if $facts['fqdn'] != $facts['hostname'] {
-    @@sshkey { "${facts['fqdn']}_${facts['hostname']}":
-      name => $facts['hostname'],
-      type => ecdsa-sha2-nistp256,
-      key  => $::sshecdsakey,
-      tag  => $facts['pure_cloud_clusterdns'],
-    }
-  }
-
-  Sshkey <<| tag == $facts['pure_cloud_clusterdns'] |>>
 
 }
 
