@@ -160,7 +160,7 @@ class pure_repmgr::config
 
     if $pure_repmgr::barman_server {
       class {'pure_barman::client':
-        barman_server => pure_repmgr::barman_server,
+        barman_server => $pure_repmgr::barman_server,
       }
     }
   }
