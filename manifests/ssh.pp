@@ -19,7 +19,7 @@ class pure_repmgr::ssh
   Ssh_authorized_key <<| tag == $facts['pure_cloud_clusterdns'] |>>
 
   class { 'pure_postgres::ssh':
-    tags => [ $facts['pure_cloud_clusterdns'], "barman:${pure_repmgr::barman_server}" ],
+    tags => [ $facts['pure_cloud_clusterdns'], $pure_repmgr::barman_server ],
   }
 
 }
