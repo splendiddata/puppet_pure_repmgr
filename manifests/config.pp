@@ -47,6 +47,7 @@ class pure_repmgr::config
     }
 
     include pure_postgres::config
+    include pure_postgres::service
 
     if $nodeid == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
 
@@ -62,15 +63,19 @@ class pure_repmgr::config
         owner   => 'postgres',
         group   => 'postgres',
         mode    => '0640',
-        require => [ Class['pure_postgres::config'], File["${pure_postgres::pg_etc_dir}/conf.d"] ],
         replace => true,
-      } ->
+      }
 
       file_line { 'wal_log_hints on':
         path   => "${pure_postgres::pg_etc_dir}/conf.d/wal.conf",
         line   => 'wal_log_hints = on',
-        notify => Class['pure_postgres::start'],
+        notify => Class['pure_postgres::restart'],
       }
+
+      Class['pure_postgres::config'] -> File["${pure_postgres::pg_etc_dir}/conf.d/wal.conf"]
+      File["${pure_postgres::pg_etc_dir}/conf.d"] -> File["${pure_postgres::pg_etc_dir}/conf.d/wal.conf"]
+      File["${pure_postgres::pg_etc_dir}/conf.d/wal.conf"] -> File_line['wal_log_hints on']
+      File["${pure_postgres::pg_etc_dir}/conf.d/wal.conf"] -> Class['pure_postgres::start']
 
     }
     elsif size($facts['pure_cloud_available_hosts']) > 0 {
@@ -87,8 +92,9 @@ class pure_repmgr::config
           upstreamhost => $upstreamhost,
           datadir      => $pure_postgres::pg_data_dir,
           require      => File["${pure_postgres::pg_etc_dir}/conf.d"],
-          notify       => Class['pure_postgres::start'],
         }
+
+        Pure_repmgr::Clone_standby["clone from ${upstreamhost}"] ~> Class['pure_postgres::start']
       }
 
     }
@@ -110,16 +116,6 @@ class pure_repmgr::config
         user            => 'repmgr',
         notify          => Class['pure_postgres::reload'],
       }
-    }
-
-    class { 'pure_postgres::start':
-      refreshonly => true,
-    }
-
-    class { 'pure_postgres::reload':
-      refreshonly => true,
-      before      => Class['pure_repmgr::register'],
-      require     => Class['pure_postgres::start'],
     }
 
     pure_postgres::role {'repmgr':
@@ -155,7 +151,7 @@ class pure_repmgr::config
 
     class {'pure_repmgr::register':
       replication_role => $replication_role,
-      require          => Class['pure_postgres::started'],
+      require          => Pure_postgres::Started['postgres started'],
     }
 
     if $pure_repmgr::barman_server {
