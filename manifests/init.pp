@@ -12,6 +12,7 @@ class pure_repmgr
   $replication_password = $pure_repmgr::params::replication_password,
   $buffercache          = $pure_repmgr::params::buffercache,
   $barman_server        = undef,
+  $autorestart          = $pure_postgres::params::autorestart,
 ) inherits pure_repmgr::params
 {
 

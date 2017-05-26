@@ -29,6 +29,7 @@ class pure_repmgr::install
       pg_data_dir => $pg_data_dir,
       pg_xlog_dir => $pg_xlog_dir,
       pg_ssl_cn   => $pure_repmgr::dnsname,
+      autorestart => $pure_repmgr::autorestart,
     }
 
     if $pure_repmgr::cluster_logger {
