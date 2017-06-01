@@ -217,7 +217,7 @@ class pg_server():
             return {'bc_free': -1, 'bc_used': -1}
 
 class pg_cluster():
-    def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/etc/pgpure/cluster_logger/cluster_logger.ini', debug=False, conn_timeout=3, bc_interval=60):
+    def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/var/log/pgpure/cluster_logger/cluster_logger.log', debug=False, conn_timeout=3, bc_interval=60):
         self.dns           = dns
         self.postgresport  = postgresport
         self.nodes         = {}
@@ -348,7 +348,7 @@ class pg_cluster():
         self.logfile_obj.flush()
         self.last_log = time.time()
 
-def get_default(settngs, key, default):
+def get_default(settings, key, default):
     try:
         return settings[key]
     except:
