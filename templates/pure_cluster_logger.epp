@@ -9,16 +9,10 @@ try:
 except:
     psycopg2 = None
 
-lag_query = '''SELECT ts, 
-CASE WHEN (receive_location IS NULL OR receive_location < replay_location)
-  THEN replay_location
-  ELSE receive_location
-  END AS receive_location,
+lag_query = '''SELECT CASE WHEN (receive_location IS NULL OR receive_location < replay_location) THEN replay_location ELSE receive_location END AS receive_location,
 replay_location,
-replay_timestamp,
-COALESCE(receive_location, '0/0') >= replay_location AS receiving_streamed_wal
-FROM (SELECT CURRENT_TIMESTAMP AS ts,
-  pg_catalog.pg_last_xlog_receive_location() AS receive_location,
+replay_timestamp
+FROM (SELECT pg_catalog.pg_last_xlog_receive_location() AS receive_location,
   pg_catalog.pg_last_xlog_replay_location()  AS replay_location,
   pg_catalog.pg_last_xact_replay_timestamp() AS replay_timestamp
   ) q'''
@@ -151,7 +145,7 @@ class pg_server():
         lsn_rec_lag = masterxlogrecptr - myxlogrecptr
         lsn_rep_lag = masterxlogrecptr - myxlogrepptr
         if lsn_rep_lag > 0:
-            ts_lag      = round((masterts - myts).total_seconds())
+            ts_lag      = int(round((masterts - myts).total_seconds()))
         else:
             ts_lag      = 0
 
@@ -200,6 +194,7 @@ class pg_server():
                 self.curr_starttime   = starttime
                 self.replay_timestamp = None
             elif self.curr_starttime != starttime:
+                self.curr_starttime   = starttime
                 print('{0}: resetting self.replay_timestamp'.format(self.ip))
                 self.replay_timestamp = None
             return starttime
