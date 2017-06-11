@@ -74,18 +74,21 @@ class pg_server():
         try:
             cur=self.cn.cursor()
             cur.execute(sql, params)
-            columns = [i[0] for i in cur.description]
-            ret = [dict(zip(columns, row)) for row in cur]
-            cur.close()
-            return ret
-        except psycopg2.DatabaseError as e:
+            if cur.description:
+                columns = [i[0] for i in cur.description]
+                ret = [dict(zip(columns, row)) for row in cur]
+                cur.close()
+                return ret
+            else:
+                #Seems this query returned no results
+                return None
+        except AttributeError as e:
             if self.debug:
-                print_exception(e)
-                print("On query: {0}\nWith params: {1}".format(sql, repr(params)))
+                print(e)
             return None
-        except AttributeError:
-            return None
-        except psycopg2.InterfaceError:
+        except psycopg2.InterfaceError as e:
+            if self.debug:
+                print(e)
             return None
 
     def replication_role(self):
@@ -107,6 +110,20 @@ class pg_server():
             return True
         return False
 
+    def heartbeat(self, host):
+        #This function updates timestamp in pure_cluster_logger table.
+        #It is only meant for generating a minimal load on master for proper lag detection.
+        if not self.master():
+            return None
+        try:
+            self.run_sql("insert into pure_cluster_heartbeat (server, updated) values(%s, now()) on conflict (server) do update set updated=now()", (host,))
+        except psycopg2.ProgrammingError:
+            try:
+                self.run_sql('create table if not exists pure_cluster_heartbeat ( server varchar CONSTRAINT pk_pure_cluster_heartbeat PRIMARY KEY , updated timestamp)')
+            except Exception as e:
+                print(e)
+                print('Could not create pure_cluster_heartbeat table. Lag monitoring might not be accurate.')
+
     def standby_lag_info(self):
         if not self.standby():
             return None
@@ -118,7 +135,10 @@ class pg_server():
     def master_lag_info(self):
         if not self.master():
             return None
-        lag_info = self.run_sql('SELECT current_timestamp as ts, pg_catalog.pg_current_xlog_location() as xlog_location')
+        try:
+            lag_info = self.run_sql('SELECT current_timestamp as ts, pg_catalog.pg_current_xlog_location() as xlog_location')
+        except Exception as e:
+            print(e)
         if not lag_info:
              return False
         return lag_info[0]
@@ -144,10 +164,7 @@ class pg_server():
 
         lsn_rec_lag = masterxlogrecptr - myxlogrecptr
         lsn_rep_lag = masterxlogrecptr - myxlogrepptr
-        if lsn_rep_lag > 0:
-            ts_lag      = int(round((masterts - myts).total_seconds()))
-        else:
-            ts_lag      = 0
+        ts_lag      = int(round((masterts - myts).total_seconds()))
 
         return (ts_lag, lsn_rep_lag, lsn_rec_lag)
 
@@ -261,7 +278,6 @@ class pg_cluster():
             node.update_lag()
 
     def __str__(self):
-
         state     = {}
         master_is_valid = False
         try:
@@ -276,6 +292,12 @@ class pg_cluster():
             state['master'] = self.master.ip
         except:
             state['master'] = 'unknown'
+
+        try:
+            self.master.heartbeat(self.local_node_ip)
+        except Exception as e:
+            print(e)
+            pass
 
         try:
             localnode          = self.nodes[self.local_node_ip]
@@ -378,7 +400,6 @@ if __name__ == "__main__":
         sys.exit(0)
  
     signal.signal(signal.SIGTERM, signal_term_handler)
-
 
     settings = process_config_files([ '/etc/repmgr.conf', '/etc/facter/facts.d/pure_cloud_cluster.ini', '/etc/pgpure/postgres/<%= $pure_postgres::pg_version %>/data/cluster_logger.ini' ])
 
