@@ -1,0 +1,23 @@
+#!/bin/bash
+
+cd /
+id <%= $pure_postgres::params::postgres_user %> > /dev/null 2>&1 || exit 0
+exec 2<&-
+
+function run_sql() {
+   db=$1
+   qry=$2
+   default=$3
+   RES=$(sudo -u <%= $pure_postgres::params::postgres_user %> <%= $pure_postgres::params::pg_bin_dir %>/psql --quiet --tuples-only -c "$qry" -d $db) && echo $RES || echo $default
+}
+
+#detection of replication_role
+run_sql postgres "select case when pg_is_in_recovery() then 'pure_replication_role=standby' else 'pure_replication_role=master' end" 
+
+#detection of nodeid
+FQDN=$(hostname -f)
+NODEID=$(run_sql repmgr "select id from repmgr_<%= $pure_repmgr::repmgr_cluster_name %>.repl_nodes where name = '$FQDN'")
+if [ ! "$NODEID" -a -e /etc/repmgr.conf]; then
+  NODEID=$(awk 'BEGIN{FS="="}$1~/^node$/{print $2}' /etc/repmgr.conf)
+fi
+echo pure_cloud_nodeid=$NODEID

@@ -6,11 +6,13 @@ class pure_repmgr::config
   $repmgr_password = $pure_repmgr::repmgr_password,
 ) inherits pure_repmgr
 {
-  file { [  '/etc/facter', '/etc/facter/facts.d' ]:
-    ensure => 'directory',
-    owner  => 'root',
-    group  => 'root',
-    mode   => '0755',
+  if ! defined(File['/etc/facter/facts.d']) {
+    file { [  '/etc/facter', '/etc/facter/facts.d' ]:
+      ensure => 'directory',
+      owner  => 'root',
+      group  => 'root',
+      mode   => '0755',
+    }
   }
 
   file { '/etc/facter/facts.d/pure_cloud_cluster.ini':
@@ -32,6 +34,16 @@ class pure_repmgr::config
     require => File['/etc/facter/facts.d/pure_cloud_cluster.ini'],
   }
 
+  #create facts script to add postgres ssh keys to facts
+  file { '/etc/facter/facts.d/pure_repmgr_facts.sh':
+    ensure  => file,
+    content => epp('pure_repmgr/pure_repmgr_facts.epp'),
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0755',
+    require => File['/etc/facter/facts.d'],
+  }
+
   Pure_postgres::Pg_hba <<| tag == $pure_repmgr::repmgr_cluster_name |>>
 
   if $facts['pure_cloud_nodeid'] {
@@ -45,7 +57,6 @@ class pure_repmgr::config
       owner   => 'postgres',
       group   => 'postgres',
       mode    => '0640',
-      replace => false,
     }
 
     include pure_postgres::config
