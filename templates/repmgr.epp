@@ -1,5 +1,5 @@
 #Use lower case for cluster name, since this is part of the schema that remgr keeps his cluster info in.
-cluster=<%= $facts[pure_cloud_cluster] %>
+cluster=<%= $pure_repmgr::repmgr_cluster_name %>
 node=<%= $facts[pure_cloud_nodeid] %>
 node_name=<%= $facts[fqdn] %>
 conninfo='host=<%= $facts[fqdn] %> user=repmgr dbname=repmgr'

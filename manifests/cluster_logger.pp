@@ -31,16 +31,15 @@ class pure_repmgr::cluster_logger
     }
   }
 
-  split($facts['pure_cloud_nodes'],',').each | String $source | {
-    pure_postgres::pg_hba {"pg_hba entry for pure_cluster_logger from ${source}":
-      database        => 'postgres',
-      method          => 'trust',
-      state           => 'present',
-      source          => "${source}/32",
-      connection_type => 'host',
-      user            => 'pure_cluster_logger',
-      notify          => Class['pure_postgres::reload'],
-    }
+  @@pure_postgres::pg_hba {"pg_hba entry for pure_cluster_logger from ${facts['networking']['ip']}":
+    database        => 'postgres',
+    method          => 'trust',
+    state           => 'present',
+    source          => "${facts['networking']['ip']}/32",
+    connection_type => 'host',
+    user            => 'pure_cluster_logger',
+    notify          => Class['pure_postgres::reload'],
+    tag             => $pure_repmgr::repmgr_cluster_name,
   }
 
   file {'/etc/logrotate.d/pure-cluster-logger':

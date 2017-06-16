@@ -11,15 +11,15 @@ class pure_repmgr::ssh
       ensure => present,
       type   => $facts['pure_postgres_ssh_public_key_type'],
       key    => $facts['pure_postgres_ssh_public_key_key'],
-      tag    => $facts['pure_cloud_clusterdns'],
+      tag    => $pure_repmgr::dnsname,
       user   => 'postgres',
     }
   }
 
-  Ssh_authorized_key <<| tag == $facts['pure_cloud_clusterdns'] |>>
+  Ssh_authorized_key <<| tag == $pure_repmgr::dnsname |>>
 
   class { 'pure_postgres::ssh':
-    tags => [ $facts['pure_cloud_clusterdns'], $pure_repmgr::barman_server ],
+    tags => [ $pure_repmgr::dnsname, $pure_repmgr::barman_server ],
   }
 
 }

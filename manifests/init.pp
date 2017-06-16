@@ -16,6 +16,8 @@ class pure_repmgr
 ) inherits pure_repmgr::params
 {
 
+  $repmgr_cluster_name = regsubst($dnsname, '\..*', '')
+
   include pure_postgres::params
 
   class { 'pure_repmgr::install':
