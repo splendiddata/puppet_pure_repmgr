@@ -1,0 +1,118 @@
+#!/bin/env python
+import sys
+import psycopg2
+import re
+import subprocess
+import tempfile
+
+master   = None
+nodeid   = None
+conffile = '<%= $pure_repmgr::repmgr_conf %>'
+
+try:
+   cn=psycopg2.connect(dbname='repmgr')
+   cur=cn.cursor()
+except:
+   print('Could not connect. Is the local instance running?')
+   sys.exit(-1)
+
+re_s=re.compile('[^a-zA-Z0-9]+')
+try:
+   conf={}
+   f=open(conffile)
+   for l in f:
+      l=l.split('#')[0]
+      if not '=' in l:
+         continue
+      k, v = l.split('=', 1)
+      conf[k.strip()] = v.strip()
+   clustername=conf['cluster']
+   if re.search('[^a-zA-Z0-9]+', clustername):
+      print('Invalid clustername "{0}". Quiting to prevent sql injection.')
+      sys.exit(-2)
+   nodename=conf['node_name']
+   try:
+      nodeid=int(conf['node'])
+   except:
+      conffile = None
+except Exception as e:
+   print(e)
+   print('Something went wrong reading clustername from '+conffile)
+   sys.exit(-3)
+
+try:
+   cur.execute('select id from repmgr_{0}.repl_nodes where name = %s'.format(clustername), (nodename,))
+   r=cur.next()
+   if r[0]:
+      print('Already registered as node {0}.'.format(r[0]))
+      sys.exit()
+except Exception as e:
+   pass
+
+try:
+   cur.execute('select pg_is_in_recovery()')
+   r=cur.next()
+   if r[0]:
+      print('This instance is standby. Lets find master.')
+      role='standby'
+   else:
+      master=cur
+      role='master'
+except Exception as e:
+   print(e)
+   print('Could not detect replication role')
+   sys.exit(-4)
+
+if not master:
+   try:
+      cur.execute('select conninfo from repmgr_{0}.repl_nodes'.format(clustername))
+      for r in cur:
+         constr=r[0]
+         try:
+            cn2=psycopg2.connect(constr)
+         except Exception as e:
+            print(e)
+            print('Could not connect to {0}. Skipping.'.format(constr))
+            continue
+         try:
+            cur2=cn2.cursor()
+            cur2.execute('select pg_is_in_recovery()')
+            r=cur2.next()
+            if r[0]:
+               print('Instance on connstr {0} is standby. Check next.'.format(constr))
+            else:
+               print('Instance on connstr {0} is master. Master detected.'.format(constr))
+               master=cur2
+               break
+         except Exception as e:
+            print(e)
+            print('Something when wrong detecting role of {0}'.format(constr))
+   except Exception as e:
+      print(e)
+      print('Could not find connectstrings of other cluster nodes.')
+
+if not master:
+   print('No master detected. Cannot continue.')
+   sys.exit(-5)
+
+if not conffile:
+   try:
+      master.execute('select max(id) from repmgr_{0}.repl_nodes'.format(clustername))
+      r=master.next()
+      nodeid=r[0]+1
+   except:
+      nodeid=1
+   try:
+      of = tempfile.NamedTemporaryFile(prefix='repmgr.conf')
+      conffile = of.name
+      conf['node'] = nodeid
+      for k in sorted(conf.keys()):
+         of.write('{0}={1}\n'.format(k,conf[k]))
+      of.flush()
+   except Exception as e:
+      print(e)
+      print('Could not write temporary config file')
+      sys.exit(-6)
+
+print('registering {0}'.format(role))
+subprocess.check_call([ '<%= $pure_postgres::params::pg_bin_dir %>/repmgr', '-f', conffile, role, 'register' ])
