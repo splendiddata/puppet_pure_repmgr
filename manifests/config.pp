@@ -64,9 +64,7 @@ class pure_repmgr::config
 
     if $nodeid == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
 
-      if $facts['pure_cloud_nodeid'] == '1' and size($facts['pure_cloud_available_hosts']) == 0 {
-        include pure_postgres::initdb
-      }
+      include pure_postgres::initdb
 
       $replication_role  = 'master'
 

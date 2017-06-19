@@ -1,4 +1,22 @@
 #!/bin/env python
+'''
+register.py is a smart script that 
+* connects to postgres locally, 
+* finds replication config in repmgr db, 
+* connects to master, 
+* checks necessity for registering, 
+* generates a unique nodeid, 
+* creates a repmgr.conf usable for registering, and 
+* runs register command.
+
+1: register.py is run from puppet when a new standby is cloned, or a master is init'ed.
+2: On next run, nodeid will be read from postgres as a fact by /etc/facter/facts.d/pure_repmgr_facts.sh
+   and added to the main repmgr.conf.
+This order is applied on purpose. If more than one standby would try to register with the exact same unique id,
+all but one would fail, and tried again the next run, which would be ok. Adding a nodeid to to original repmgr.conf
+would leave an incosistent situation (more than one node having same nodeid in repmgr.conf) which is harder to resolve automated.
+'''
+
 import sys
 import psycopg2
 import re
@@ -9,6 +27,7 @@ master   = None
 nodeid   = None
 conffile = '<%= $pure_repmgr::repmgr_conf %>'
 
+print('Connecting locally.')
 try:
    cn=psycopg2.connect(dbname='repmgr')
    cur=cn.cursor()
@@ -16,30 +35,40 @@ except:
    print('Could not connect. Is the local instance running?')
    sys.exit(-1)
 
+#This re checks that clustername is a valid and with that prevents sql injection.
 re_s=re.compile('[^a-zA-Z0-9]+')
 try:
+   #Read and parse repmgr.conf into a dict of key=val pairs.
    conf={}
    f=open(conffile)
    for l in f:
+      #Everything after a '#' sign is comment and should be ignored
       l=l.split('#')[0]
+      #a valid line should have '=' sign. Skip lines that dont (probably nothing but comment and spaces).
       if not '=' in l:
          continue
       k, v = l.split('=', 1)
+      #Add value to dict with key as key. Strip spaces from key and val.
       conf[k.strip()] = v.strip()
+   #Now we should be able to read the cluster name from the config file
    clustername=conf['cluster']
    if re.search('[^a-zA-Z0-9]+', clustername):
-      print('Invalid clustername "{0}". Quiting to prevent sql injection.')
+      print('Invalid clustername "{0}". Quiting to prevent sql injection.'.format(clustername))
       sys.exit(-2)
+   #And we should have nodename under which a db server would be registered if it already is.
    nodename=conf['node_name']
    try:
       nodeid=int(conf['node'])
+      print('nodeid already set ({0}). I can use the original repmgr.conf file'.format(nodeid))
    except:
+      print('nodeid not yet set in repmgr.conf. I will generate a temporary repmgr.conf with a new nodeid instead.')
       conffile = None
 except Exception as e:
    print(e)
    print('Something went wrong reading clustername from '+conffile)
    sys.exit(-3)
 
+print('Checking locally if this node was already registered.')
 try:
    cur.execute('select id from repmgr_{0}.repl_nodes where name = %s'.format(clustername), (nodename,))
    r=cur.next()
@@ -49,13 +78,17 @@ try:
 except Exception as e:
    pass
 
+print('Checking replication role of this node')
 try:
    cur.execute('select pg_is_in_recovery()')
    r=cur.next()
    if r[0]:
-      print('This instance is standby. Lets find master.')
+      print('This instance is standby.')
       role='standby'
    else:
+      print('''This node is a master. Will still register, but slightly different: 
+* not searching for master from registered noded, and 
+* using "repmgr master register" instead of "repmgr standby register".''')
       master=cur
       role='master'
 except Exception as e:
@@ -64,10 +97,12 @@ except Exception as e:
    sys.exit(-4)
 
 if not master:
+   print('Looking for master.')
    try:
       cur.execute('select conninfo from repmgr_{0}.repl_nodes'.format(clustername))
       for r in cur:
          constr=r[0]
+         print('Checking {0}'.format(constr))
          try:
             cn2=psycopg2.connect(constr)
          except Exception as e:
@@ -75,13 +110,14 @@ if not master:
             print('Could not connect to {0}. Skipping.'.format(constr))
             continue
          try:
+            print('  Checking replication role.')
             cur2=cn2.cursor()
             cur2.execute('select pg_is_in_recovery()')
             r=cur2.next()
             if r[0]:
-               print('Instance on connstr {0} is standby. Check next.'.format(constr))
+               print('  Instance is standby.')
             else:
-               print('Instance on connstr {0} is master. Master detected.'.format(constr))
+               print('  Instance is master. Master detected.')
                master=cur2
                break
          except Exception as e:
@@ -97,18 +133,22 @@ if not master:
 
 if not conffile:
    try:
+      print('Determining next free nodeid.')
       master.execute('select max(id) from repmgr_{0}.repl_nodes'.format(clustername))
       r=master.next()
       nodeid=r[0]+1
    except:
       nodeid=1
+   print('Nodeid={0}'.format(nodeid))
    try:
+      print('Generating temporary repmgr.conf')
       of = tempfile.NamedTemporaryFile(prefix='repmgr.conf')
       conffile = of.name
       conf['node'] = nodeid
       for k in sorted(conf.keys()):
          of.write('{0}={1}\n'.format(k,conf[k]))
       of.flush()
+      print('Temporary repmgr.conf file generated as {0}'.format(conffile))
    except Exception as e:
       print(e)
       print('Could not write temporary config file')
