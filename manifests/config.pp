@@ -24,7 +24,7 @@ class pure_repmgr::config
   }
 
   #create facts script to add postgres ssh keys to facts
-  file { '/etc/facter/facts.d/pure_repmgr_facts.sh':
+  file { '/etc/facter/facts.d/pure_repmgr_facts.py':
     ensure  => file,
     content => epp('pure_repmgr/pure_repmgr_facts.epp'),
     owner   => 'root',

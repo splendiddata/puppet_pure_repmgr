@@ -1,19 +1,39 @@
-#!/bin/bash
+#!/bin/env python
+debug=False
+import socket
+import os
+import sys
 
-cd /
-id <%= $pure_postgres::params::postgres_user %> > /dev/null 2>&1 || exit 0
-exec 2<&-
+try:
+   from pwd import getpwnam  
+   os.setuid(getpwnam('<%= $pure_postgres::params::postgres_user %>').pw_uid)
+except Exception as e:
+   if debug:
+      print(e)
+   sys.exit(-1)
 
-function run_sql() {
-   db=$1
-   qry=$2
-   default=$3
-   RES=$(sudo -u <%= $pure_postgres::params::postgres_user %> <%= $pure_postgres::params::pg_bin_dir %>/psql --quiet --tuples-only -c "$qry" -d $db) && echo $RES || echo $default
-}
+try:
+   import psycopg2
+   cn=psycopg2.connect(dbname='repmgr')
+   cur=cn.cursor()
+except:
+   if debug:
+      print(e)
+   sys.exit(-2)
 
-#detection of replication_role
-run_sql postgres "select case when pg_is_in_recovery() then 'pure_replication_role=standby' else 'pure_replication_role=master' end" 
+try:
+   cur.execute("select pg_is_in_recovery()")
+   r=cur.next()
+   if r[0]:
+      print("pure_replication_role=standby")
+   else:
+      print("pure_replication_role=master")
+except:
+   pass
 
-#detection of nodeid
-FQDN=$(hostname -f)
-run_sql repmgr "select 'pure_cloud_nodeid'||id from repmgr_<%= $pure_repmgr::repmgr_cluster_name %>.repl_nodes where name = '$FQDN'"
+try:
+   cur.execute('select id from repmgr_<%= $pure_repmgr::repmgr_cluster_name %>.repl_nodes where name = %s', (socket.gethostname(),))
+   r=cur.next()
+   print('pure_cloud_nodeid={0}'.format(r[0]))
+except:
+   pass
