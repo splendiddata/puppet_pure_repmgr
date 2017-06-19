@@ -1,0 +1,98 @@
+1.0.4: Cleanup.
+- In this release I have changed the dependencies on facts.
+  Previously, a huge script ran to collect all kinds of facts. 
+  - It read DNS, 
+  - connected to other hosts, 
+  - it read ssh authorized keys for postgres,
+  - etc.
+  Since this release, many of these solutions have changed:
+  - Instead of DNS info, exported resources is used to collect the data
+  - ssh data is a small facts snippet
+  - config.pp works quite different and therefore connectivity of hosts is no longer required
+  - etc.
+
+- Details:
+  - Removed the facts script and ini that collected cluster config from dns.
+  - Changed location of inifile of the logger
+  - Added config dns= to inifile of the logger
+  - config.pp and install.pp don't rely on nodeid anymore
+  - a python script reads info from postgres (local->finds master->generates free nodeid)
+    then builds a repmgr.conf file and calls repmgr register command. It is omnipotent.
+  - a python script prints facts on nodeid and replication role of the node
+  - primary_network parameter is replaced by initial_standby parameter
+    Setting this to on makes that node do an initdb if cloning didn't work properly.
+
+1.0.3: Added heartbeat feature
+- This release adds a heartbeat feature. The heartbeat feature, basically consists of a table 
+  in the postgres database and some additions in the pure_cluster_logger python script. The script:
+  - creates the table if it doesn't exist
+  - adds a record for the server it is running on (if it doesn't exist)
+  - updates the record (sets column [updated] to current date with now function) on every check run (basically every second).
+    This does two things:
+    1: You now have a single point to check whether the scripts are running on all servers. 
+       Furthermore, some additional information is available, like 'previous servers it was running on', 
+       and 'when a script stopped running'.
+    2: You now have a very small replication stream going on, even when the application modifies nothing.
+       This enhancements the lag_sec value. This shows the delta between time on the master and the latest commit 
+       that was applied on the standby. Previously, latest commit on standby could be old, even in a proper 
+       functioning replication setup. With this heartbeat feature, in a properly functioning setup it can be a second old to the latest.
+
+1.0.2: clusterlogger inconsistencies en autorestart
+- Some minor inconsistencies in clusterlogger
+- Added feature for (en/dis)abling autorestart.
+
+1.0.1: Added barman support and modified postgres service to better fit to puppet way
+- I have added a parameter barman_server. If you set this to a fqdn of a barman server, 
+  then puppet will add that is required for barman support in the replicated cluster setup.
+- Furthermore, the ssh module is split in two and the sshkey part is moved to the pure_postgres module.
+  The ssh key part must be called with a list of ssh keys that should be added to the known hosts of the server
+- Last but not least, the service part is modified to better fit the puppet way of resource management.
+  - All the service stuff is moved to the pure_postgres::service module (to fit to proper module layout)
+  - A init parameter sets if the service should be managed by the module or not.
+    -  Managed: pure_postgres starts the service
+    -  Unmanaged: pure_postgres::start can be notified, but will not be started by default
+  - pure_postgres::started is now a definition. Both pure_postgres::start and pure_postgres::restart 
+    use it to check that postgres is up after class is finished
+  - pure_postgres::reload and pure_postgres::restart are refreshonly
+  - pure_postgres::service now rather initializes the services that taking action
+  - This new setu better fits into pure_repmgr::config. Required changed are applied as needed.
+
+1.0.0: Final release for phase 1
+- Final release for phase 1
+- Also fixed Workaround for 'repmgr switchover not handling seperate replication user well' issue.
+
+0.9.5: Fixed cluster logger issue reporting weird lag
+- Added a feature to cluster logger. He now validates lag info. 
+  If replay time has travelled to the past, it is invalid. On instance restart, previous replay time is reset.
+- repmgrd and automatic failover is not implemented, but I started to prepare fore it.
+  - Added config file to add repmgrd automatic failover functionality to a postgres cluster with repmgrd.
+  - Added a systemd unit file for repmgrd.
+
+0.9.3: lint
+- Cleanup with lint
+- Bumped version in metadata.json file.
+
+0.9.2: Include pure_postgress::params
+- Fixed dependency.
+- Also added README.md and metadat.json
+- And replace config file (puppet master is always right.)
+
+0.9.1: RTM
+- This release should hold all for going live in phase 1
+
+0.9: Fixed all harding issues, except relying on trust, and some enhancements on cluster_logger
+- Security:
+  - All replication permissions for repmgr removed
+  - Using a separate replication user
+  - Logrotate for cluster logger
+  - cluster_logger is now running as a different user then root.
+- Cluster_logger:
+  - Show role (master or standby).
+  - Show lag for master too (lag=0)
+  - Stability issue
+
+0.1.7: Many security enhancements
+- Added SSL Server certificate
+- Fixed SQL injection thread
+- repmgr password as parameter (md5 hash)
+- Use ed25519 instead of rsa
