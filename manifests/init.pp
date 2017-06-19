@@ -5,6 +5,7 @@ class pure_repmgr
 (
   $primarynetwork       = undef,
   $dnsname              = undef,
+  $initial_master       = false,
   $cluster_logger       = $pure_repmgr::params::cluster_logger,
   $pg_data_dir          = $pure_postgres::params::pg_data_dir,
   $pg_xlog_dir          = $pure_postgres::params::pg_xlog_dir,

@@ -401,7 +401,7 @@ if __name__ == "__main__":
  
     signal.signal(signal.SIGTERM, signal_term_handler)
 
-    settings = process_config_files([ '/etc/repmgr.conf', '/etc/facter/facts.d/pure_cloud_cluster.ini', '/etc/pgpure/postgres/<%= $pure_postgres::pg_version %>/data/cluster_logger.ini' ])
+    settings = process_config_files([ '/etc/repmgr.conf', '/etc/pgpure/cluster_logger/cluster_logger.ini' ])
 
     default_postgresport = get_default(settings, 'postgresport', 5432)
     default_min_interval = get_default(settings, 'cluster_logger_min_interval', 1)
@@ -427,7 +427,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not args.dns:
-        print('You should set the DNS of this cluster\n- with --dns, or\n- in inifile /etc/facter/facts.d/pure_cloud_cluster.ini or\n- in config file /etc/repmgr.conf')
+        print('You should set the DNS of this cluster\n- with --dns, or\n- in inifile /etc/pgpure/cluster_logger/cluster_logger.ini or\n- in config file /etc/repmgr.conf')
         sys.exit()
 
     if not '.' in args.dns:

@@ -1,3 +1,4 @@
+dnsname=<%= $pure_repmgr::dnsname %>
 cluster_logger_max_interval=3600
 <% if $pure_repmgr::params::buffercache { -%>
 #Interval for checking buffercache usage

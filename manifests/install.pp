@@ -21,23 +21,17 @@ class pure_repmgr::install
     ensure => 'installed',
   }
 
-  if $facts['pure_cloud_nodeid'] {
-
-    #By default don't initdb. For intial master, config will include initdb class himself.
-    class { 'pure_postgres':
-      do_initdb   => false,
-      pg_data_dir => $pg_data_dir,
-      pg_xlog_dir => $pg_xlog_dir,
-      pg_ssl_cn   => $pure_repmgr::dnsname,
-      autorestart => $pure_repmgr::autorestart,
-    }
-
-    if $pure_repmgr::cluster_logger {
-      include pure_repmgr::cluster_logger
-    }
+  #By default don't initdb. For intial master, config will include initdb class himself.
+  class { 'pure_postgres':
+    do_initdb   => false,
+    pg_data_dir => $pg_data_dir,
+    pg_xlog_dir => $pg_xlog_dir,
+    pg_ssl_cn   => $pure_repmgr::dnsname,
+    autorestart => $pure_repmgr::autorestart,
   }
-  else {
-    include pure_postgres::postgres_user
+
+  if $pure_repmgr::cluster_logger {
+    include pure_repmgr::cluster_logger
   }
 
 }

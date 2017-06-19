@@ -64,13 +64,17 @@ class pure_repmgr::cluster_logger
     system     => true,
   } ->
 
-  file { [ '/usr/pgpure/cluster_logger', '/var/log/pgpure/cluster_logger' ]:
+  file { [ '/usr/pgpure/cluster_logger', '/var/log/pgpure/cluster_logger', '/etc/pgpure/cluster_logger' ]:
     ensure => directory,
     owner  => 'pure_cluster_logger',
     group  => 'pgpure',
   } ->
 
   file { "${pure_postgres::pg_etc_dir}/cluster_logger.ini":
+    ensure  => absent,
+  } ->
+
+  file { "/etc/pgpure/cluster_logger/cluster_logger.ini":
     ensure  => file,
     content => epp('pure_repmgr/cluster_logger.epp'),
     owner   => 'pure_cluster_logger',

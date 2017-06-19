@@ -75,6 +75,10 @@ try:
    if r[0]:
       print('Already registered as node {0}.'.format(r[0]))
       sys.exit()
+except psycopg2.DatabaseError as e:
+   print(e)
+   print('DatabaseError. Probably because we are registering master for the first time.\n  Lets not worry about this one yet, but rollback transaction so we can still execute sql.')
+   cn.rollback()
 except Exception as e:
    pass
 
