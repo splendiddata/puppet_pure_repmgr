@@ -15,6 +15,10 @@ register.py is a smart script that
 This order is applied on purpose. If more than one standby would try to register with the exact same unique id,
 all but one would fail, and tried again the next run, which would be ok. Adding a nodeid to to original repmgr.conf
 would leave an incosistent situation (more than one node having same nodeid in repmgr.conf) which is harder to resolve automated.
+
+Also note that it is required to set nodeid during clone. However, in our case nodeid is set by register.py.
+Therefore nodeid is set to 100 if the fact script could not read it from the database.
+For this reason the value of nodeid in repmgr.conf is disregarded by this script and is set by puppet after registeration was succesful.
 '''
 
 import sys
@@ -57,12 +61,6 @@ try:
       sys.exit(-2)
    #And we should have nodename under which a db server would be registered if it already is.
    nodename=conf['node_name']
-   try:
-      nodeid=int(conf['node'])
-      print('nodeid already set ({0}). I can use the original repmgr.conf file'.format(nodeid))
-   except:
-      print('nodeid not yet set in repmgr.conf. I will generate a temporary repmgr.conf with a new nodeid instead.')
-      conffile = None
 except Exception as e:
    print(e)
    print('Something went wrong reading clustername from '+conffile)
@@ -135,28 +133,27 @@ if not master:
    print('No master detected. Cannot continue.')
    sys.exit(-5)
 
-if not conffile:
-   try:
-      print('Determining next free nodeid.')
-      master.execute('select max(id) from repmgr_{0}.repl_nodes'.format(clustername))
-      r=master.next()
-      nodeid=r[0]+1
-   except:
-      nodeid=1
-   print('Nodeid={0}'.format(nodeid))
-   try:
-      print('Generating temporary repmgr.conf')
-      of = tempfile.NamedTemporaryFile(prefix='repmgr.conf')
-      conffile = of.name
-      conf['node'] = nodeid
-      for k in sorted(conf.keys()):
-         of.write('{0}={1}\n'.format(k,conf[k]))
-      of.flush()
-      print('Temporary repmgr.conf file generated as {0}'.format(conffile))
-   except Exception as e:
-      print(e)
-      print('Could not write temporary config file')
-      sys.exit(-6)
+try:
+   print('Determining next free nodeid.')
+   master.execute('select max(id) from repmgr_{0}.repl_nodes'.format(clustername))
+   r=master.next()
+   nodeid=r[0]+1
+except:
+   nodeid=1
+print('Nodeid={0}'.format(nodeid))
+try:
+   print('Generating temporary repmgr.conf')
+   of = tempfile.NamedTemporaryFile(prefix='repmgr.conf')
+   conffile = of.name
+   conf['node'] = nodeid
+   for k in sorted(conf.keys()):
+      of.write('{0}={1}\n'.format(k,conf[k]))
+   of.flush()
+   print('Temporary repmgr.conf file generated as {0}'.format(conffile))
+except Exception as e:
+   print(e)
+   print('Could not write temporary config file')
+   sys.exit(-6)
 
 print('registering {0}'.format(role))
 subprocess.check_call([ '<%= $pure_postgres::params::pg_bin_dir %>/repmgr', '-f', conffile, role, 'register' ])

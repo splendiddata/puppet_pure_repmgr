@@ -37,6 +37,8 @@ class pure_repmgr::config
 
   if $facts['pure_cloud_nodeid'] {
     $nodeid = $facts['pure_cloud_nodeid']
+  } else {
+    $nodeid = '100'
   }
 
   include pure_repmgr::ssh
