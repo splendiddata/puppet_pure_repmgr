@@ -6,6 +6,15 @@ class pure_repmgr::config
   $repmgr_password = $pure_repmgr::repmgr_password,
 ) inherits pure_repmgr
 {
+
+  file { "${pure_postgres::pg_bin_dir}/pure_repmgr_releasenotes.txt":
+    ensure  => 'file',
+    source => 'puppet:///modules/pure_repmgr/releasenotes.txt',
+    owner   => $pure_postgres::postgres_user,
+    group   => $pure_postgres::postgres_group,
+    mode    => '0750',
+  }
+
   if ! defined(File['/etc/facter/facts.d']) {
     file { [  '/etc/facter', '/etc/facter/facts.d' ]:
       ensure => 'directory',
