@@ -1,12 +1,17 @@
 #!/bin/env python
+
+#You can set debug to True to get output. However, this gives issues with facter, so only for debugging
 debug=False
-import socket
+
 import os
 import sys
+from pwd import getpwnam
 
 try:
-   from pwd import getpwnam  
-   os.setuid(getpwnam('<%= $pure_postgres::params::postgres_user %>').pw_uid)
+   #read postgres uid
+   pguid=getpwnam('<%= $pure_postgres::params::postgres_user %>').pw_uid
+   #set context to pguid. AFter this command everything is run as postgres
+   os.setuid(pguid)
 except Exception as e:
    if debug:
       print(e)
@@ -14,6 +19,7 @@ except Exception as e:
 
 try:
    import psycopg2
+   #connect to repmgr database
    cn=psycopg2.connect(dbname='repmgr')
    cur=cn.cursor()
 except:
@@ -22,6 +28,7 @@ except:
    sys.exit(-2)
 
 try:
+   #check replication role. pg_is_in_recovery() gives false for master and true for standby
    cur.execute("select pg_is_in_recovery()")
    r=cur.next()
    if r[0]:
@@ -32,7 +39,10 @@ except:
    pass
 
 try:
-   cur.execute('select id from repmgr_<%= $pure_repmgr::repmgr_cluster_name %>.repl_nodes where name = %s', (socket.gethostname(),))
+   #This is set by puppet to the hostname fqdn (exactly same as used in repmgr.conf template)
+   hostname='<%= $facts[fqdn] %>'
+   #search repl_nodes table for row of this host and read nodeid
+   cur.execute("select id from repmgr_<%= $pure_repmgr::repmgr_cluster_name %>.repl_nodes where name = %s", (hostname,))
    r=cur.next()
    print('pure_cloud_nodeid={0}'.format(r[0]))
 except:
