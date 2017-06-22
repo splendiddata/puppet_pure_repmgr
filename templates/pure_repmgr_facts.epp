@@ -15,7 +15,6 @@ try:
 except Exception as e:
    if debug:
       print(e)
-   sys.exit(-1)
 
 try:
    import psycopg2
@@ -25,7 +24,6 @@ try:
 except:
    if debug:
       print(e)
-   sys.exit(-2)
 
 try:
    #check replication role. pg_is_in_recovery() gives false for master and true for standby
@@ -35,8 +33,9 @@ try:
       print("pure_replication_role=standby")
    else:
       print("pure_replication_role=master")
-except:
-   pass
+except Exception as e:
+   if debug:
+      print(e)
 
 try:
    #This is set by puppet to the hostname fqdn (exactly same as used in repmgr.conf template)
@@ -45,5 +44,6 @@ try:
    cur.execute("select id from repmgr_<%= $pure_repmgr::repmgr_cluster_name %>.repl_nodes where name = %s", (hostname,))
    r=cur.next()
    print('pure_cloud_nodeid={0}'.format(r[0]))
-except:
-   pass
+except Exception as e:
+   if debug:
+      print(e)
