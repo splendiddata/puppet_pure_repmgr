@@ -3,7 +3,6 @@
 # Module for doing repmgr stuff with pure distribution.
 class pure_repmgr
 (
-  $primarynetwork       = undef,
   $dnsname              = undef,
   $initial_master       = false,
   $cluster_logger       = $pure_repmgr::params::cluster_logger,
