@@ -63,14 +63,6 @@ class pure_repmgr::config
   include pure_postgres::config
   include pure_postgres::service
 
-  if $pure_repmgr::initial_master {
-
-    include pure_postgres::initdb
-
-    $replication_role  = 'master'
-
-  }
-
   file { "${pure_postgres::pg_etc_dir}/conf.d/wal.conf":
     ensure  => file,
     content => epp('pure_repmgr/wal.epp'),
@@ -113,6 +105,32 @@ class pure_repmgr::config
     Pure_repmgr::Clone_standby["clone from ${facts['networking']['ip']}"] ~> Class['pure_postgres::start']
   } else {
     Pure_repmgr::Clone_standby <<| tag == $pure_repmgr::repmgr_cluster_name |>>
+  }
+
+  #The logic behind the block below is that for every cluster one node should be initial master
+  #If this node starts running, puppet will check the number of active standbys that are already active.
+  #If no node was active, puppet assumes this is an initializing cluster and will run initdb on this specific node only.
+  #This logic breaks:
+  #- When more than one node has the parameter $pure_repmgr::initial_master initial master set puppet is started at the same time.
+  #  In that case puppet will initialize the second node, before puppetdb knows that the first was already initialized 
+  #  and you have two masters in one cluster.
+  #- When puppetdb lags and doesn't have the correct facts yet, and this node has an empty datafolder
+  #  I can only think of a poorly executed migraton of all puppet nodes to a new puppet cluster,
+  #  with incorrect data path and all agents starting at exactly the same time.
+  #  To prevent that situation from happening you can unset pure_repmgr::initial_master 
+  #  when the initial master is properly initialized since it only has use in a initializing cluster.
+
+  if $pure_repmgr::initial_master {
+    #This is set for every node that should initdb (should be only one per cluster)
+    #If set, read puppet db for number of nodes that are active in this cluster
+    $active_nodes_query = ["from", "resources", [ "and", [ "=", "title", "Pure_repmgr" ], [ "=", [ "parameter", "dnsname" ], $pure_repmgr::dnsname ], [ "~", ["fact", "pure_replication_role"], "(master|standby)" ] ] ]
+    $active_nodes = puppetdb_query($active_nodes_query)
+
+    if size($active_nodes) == 0 {
+      #There is no node active in this cluster, so this should be an empty cluster. Let initdb do its thing.
+      #Also note that initdb will only init an empty datadir.
+      include pure_postgres::initdb
+    }
   }
 
   pure_postgres::role {'repmgr':
