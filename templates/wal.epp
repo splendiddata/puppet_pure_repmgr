@@ -1,3 +1,5 @@
+# This file is managed by puppet
+
 max_wal_senders = <%= $pure_repmgr::max_wal_senders %>
 
 wal_level = replica
