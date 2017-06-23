@@ -1,3 +1,5 @@
+# This file is managed by puppet
+
 [Unit]
 Description=Postgrespure cluster logger
 After=network.target
