@@ -1,7 +1,11 @@
+
 1.0.4: Cleanup.
-- In this release I have also added release notes. They are shipped by puppet to the node 
+- Cleanup with puppet lint
+- Added a line to some files and templates stating that the file is managed by puppet
+- Added a copyright statement to manifests, files and templates
+- Added release notes. They are shipped by puppet to the node 
   so that operators know which version of puppet module is currently managing this node.
-- In this release I have changed the dependencies on facts.
+- Changed the dependencies on facts.
   Previously, a huge script ran to collect all kinds of facts. 
   - It read DNS, 
   - connected to other hosts, 
