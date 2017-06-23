@@ -1,6 +1,6 @@
     {
       "name": "pure_remgr",
-      "version": "1.0.4",
+      "version": "1.1.0",
       "author": "Joint venture of KPN and Splendid Data",
       "license": "GPLv3.0",
       "summary": "A module for deploying a replicated postgres cluster with packages from PostgresPure distribution",
@@ -19,7 +19,7 @@
         }
        ],
       "dependencies": [
-        { "name": "pure_postgres", "version_requirement": ">= 1.0.4 < 1.0.5" }
+        { "name": "pure_postgres", "version_requirement": ">= 1.1.0 < 1.1.1" }
         { "name": "pure_barman", "version_requirement": ">= 1.0.0 < 1.0.1" }
       ]
     }
