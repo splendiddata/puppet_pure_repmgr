@@ -1,5 +1,4 @@
-
-1.0.4: Cleanup.
+1.1.0: Cleanup, commenting, less dependant of facts and copyrights
 - Cleanup with puppet lint
 - Added a line to some files and templates stating that the file is managed by puppet
 - Added a copyright statement to manifests, files and templates
