@@ -25,11 +25,11 @@ class pure_repmgr::config
 {
 
   file { "${pure_postgres::pg_bin_dir}/pure_repmgr_releasenotes.txt":
-    ensure  => 'file',
+    ensure => 'file',
     source => 'puppet:///modules/pure_repmgr/releasenotes.txt',
-    owner   => $pure_postgres::postgres_user,
-    group   => $pure_postgres::postgres_group,
-    mode    => '0750',
+    owner  => $pure_postgres::postgres_user,
+    group  => $pure_postgres::postgres_group,
+    mode   => '0750',
   }
 
   if ! defined(File['/etc/facter/facts.d']) {
@@ -140,7 +140,13 @@ class pure_repmgr::config
   if $pure_repmgr::initial_master {
     #This is set for every node that should initdb (should be only one per cluster)
     #If set, read puppet db for number of nodes that are active in this cluster
-    $active_nodes_query = ["from", "resources", [ "and", [ "=", "title", "Pure_repmgr" ], [ "=", [ "parameter", "dnsname" ], $pure_repmgr::dnsname ], [ "~", ["fact", "pure_replication_role"], "(master|standby)" ] ] ]
+    $active_nodes_query =
+      ['from', 'resources',
+        [ 'and',
+          [ '=', 'title', 'Pure_repmgr' ],
+          [ '=', [ 'parameter', 'dnsname' ], $pure_repmgr::dnsname ],
+          [ '~', ['fact', 'pure_replication_role' ], '(master|standby)' ] ] ]
+
     $active_nodes = puppetdb_query($active_nodes_query)
 
     if size($active_nodes) == 0 {
