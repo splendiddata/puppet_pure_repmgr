@@ -67,7 +67,7 @@ class pure_repmgr::config
     $nodeid = '100'
   }
 
-  include pure_repmgr::ssh
+  include pure_repmgr::config::ssh
 
   file { $pure_repmgr::params::repmgr_conf:
     ensure  => file,
@@ -112,16 +112,16 @@ class pure_repmgr::config
   }
 
   if $facts['pure_replication_role'] == 'master' {
-    @@pure_repmgr::clone_standby {"clone from ${facts['networking']['ip']}":
+    @@pure_repmgr::config::clone_standby {"clone from ${facts['networking']['ip']}":
       upstreamhost => $facts['networking']['ip'],
       datadir      => $pure_postgres::pg_data_dir,
       require      => File["${pure_postgres::pg_etc_dir}/conf.d"],
       tag          => $pure_repmgr::repmgr_cluster_name,
     }
 
-    Pure_repmgr::Clone_standby["clone from ${facts['networking']['ip']}"] ~> Class['pure_postgres::service::start']
+    Pure_repmgr::Config::Clone_standby["clone from ${facts['networking']['ip']}"] ~> Class['pure_postgres::service::start']
   } else {
-    Pure_repmgr::Clone_standby <<| tag == $pure_repmgr::repmgr_cluster_name |>>
+    Pure_repmgr::Config::Clone_standby <<| tag == $pure_repmgr::repmgr_cluster_name |>>
   }
 
   #The logic behind the block below is that for every cluster one node should be initial master
@@ -164,7 +164,7 @@ class pure_repmgr::config
     replication   => true,
     #$user will be expanded by postgres and should not be expanded by puppet.
     searchpath    => [ "\"repmgr_${pure_repmgr::repmgr_cluster_name}\"", '"$user"', 'public' ],
-    before        => Class['pure_repmgr::register'],
+    before        => Class['pure_repmgr::config::register'],
     require       => Class['pure_postgres::service::reload'],
   }
 
@@ -186,7 +186,7 @@ class pure_repmgr::config
     tag             => $pure_repmgr::repmgr_cluster_name,
   }
 
-  class {'pure_repmgr::register':
+  class {'pure_repmgr::config::register':
     require          => Pure_postgres::Service::Started['postgres started'],
   }
 

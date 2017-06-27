@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with puppet_pure_postgres.  If not, see <http://www.gnu.org/licenses/>.
 
-# == Class: pure_repmgr::register
+# == Class: pure_repmgr::config::register
 # Private class
-class pure_repmgr::register(
+class pure_repmgr::config::register(
 )
 {
 

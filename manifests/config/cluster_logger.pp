@@ -15,10 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with puppet_pure_postgres.  If not, see <http://www.gnu.org/licenses/>.
 
-# == Class: pure_repmgr::cluster_logger
+# == Class: pure_repmgr::config::cluster_logger
 #
 # Installs cluster_logger for cluster aware state logging
-class pure_repmgr::cluster_logger
+class pure_repmgr::config::cluster_logger
 (
   $buffercache = $pure_repmgr::buffercache,
 ) inherits pure_repmgr

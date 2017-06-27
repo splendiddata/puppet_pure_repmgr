@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with puppet_pure_postgres.  If not, see <http://www.gnu.org/licenses/>.
 
-# == Definition: pure_repmgr::clone_standby
+# == Definition: pure_repmgr::config::clone_standby
 # Private class
-define pure_repmgr::clone_standby(
+define pure_repmgr::config::clone_standby(
   $upstreamhost       = undef,
   $datadir            = $pure_postgres::pg_data_dir,
 )

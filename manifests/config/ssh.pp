@@ -15,10 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with puppet_pure_postgres.  If not, see <http://www.gnu.org/licenses/>.
 
-# == Class: pure_repmgr::ssh
+# == Class: pure_repmgr::config::ssh
 #
 # Configure a replicated cluster with repmgr from pure repo 
-class pure_repmgr::ssh
+class pure_repmgr::config::ssh
 (
 )
 {
