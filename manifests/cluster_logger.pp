@@ -67,9 +67,13 @@ class pure_repmgr::cluster_logger
     mode   => '0644',
   }
 
+  file { "${pure_postgres::pg_etc_dir}/cluster_logger.ini":
+    ensure  => absent,
+  }
+
   pure_postgres::role {'pure_cluster_logger':
     canlogin => true,
-  } ->
+  }
 
   user { 'pure_cluster_logger':
     ensure     => present,
@@ -79,19 +83,15 @@ class pure_repmgr::cluster_logger
     managehome => true,
     shell      => '/sbin/nologin',
     system     => true,
-  } ->
+  }
 
   file { [ '/usr/pgpure/cluster_logger', '/var/log/pgpure/cluster_logger', '/etc/pgpure/cluster_logger' ]:
     ensure => directory,
     owner  => 'pure_cluster_logger',
     group  => 'pgpure',
-  } ->
+  }
 
-  file { "${pure_postgres::pg_etc_dir}/cluster_logger.ini":
-    ensure  => absent,
-  } ->
-
-  file { "/etc/pgpure/cluster_logger/cluster_logger.ini":
+  file { '/etc/pgpure/cluster_logger/cluster_logger.ini':
     ensure  => file,
     content => epp('pure_repmgr/cluster_logger.epp'),
     owner   => 'pure_cluster_logger',
@@ -99,7 +99,7 @@ class pure_repmgr::cluster_logger
     mode    => '0640',
     replace =>  false,
     notify  => Service['pure_cluster_logger.service'],
-  } ->
+  }
 
   file {'/usr/pgpure/cluster_logger/pure_cluster_logger.py':
     ensure  => 'file',
@@ -109,14 +109,22 @@ class pure_repmgr::cluster_logger
     group   => 'pgpure',
     mode    => '0750',
     notify  => Service['pure_cluster_logger.service'],
-  } ->
+  }
 
   file {'/var/log/pgpure/cluster_logger/cluster_logger.log':
     ensure => 'file',
     owner  => 'pure_cluster_logger',
     group  => 'pgpure',
     mode   => '0640',
-  } ->
+  }
+
+  if ! defined(Exec['systemctl daemon-reload']) {
+    exec { 'systemctl daemon-reload':
+      refreshonly => true,
+      cwd         => '/',
+      path        => '/bin'
+    }
+  }
 
   file {'/usr/lib/systemd/system/pure_cluster_logger.service':
     ensure => 'file',
@@ -126,19 +134,11 @@ class pure_repmgr::cluster_logger
     group  => 'root',
     mode   => '0644',
     notify => Exec['systemctl daemon-reload'],
-  } ->
-
-  service { 'pure_cluster_logger.service':
-    ensure => 'running',
-    enable => true,
   }
 
-  if ! defined(Exec['systemctl daemon-reload']) {
-    exec { 'systemctl daemon-reload':
-      refreshonly => true,
-      cwd         => '/',
-      path        => '/bin'
-    }
+  -> service { 'pure_cluster_logger.service':
+    ensure => 'running',
+    enable => true,
   }
 
 }
