@@ -38,9 +38,9 @@ class pure_repmgr
   include pure_postgres::params
 
   class { 'pure_repmgr::install':
-  } ->
+  }
 
-  class { 'pure_repmgr::config':
+  -> class { 'pure_repmgr::config':
   }
 
 }
