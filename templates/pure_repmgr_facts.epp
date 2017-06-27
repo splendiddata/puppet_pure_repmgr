@@ -40,7 +40,7 @@ try:
    #connect to repmgr database
    cn=psycopg2.connect(dbname='repmgr')
    cur=cn.cursor()
-except:
+except Exception as e:
    if debug:
       print(e)
 
