@@ -37,14 +37,14 @@ class pure_repmgr::register(
     owner   => $pure_postgres::postgres_user,
     group   => $pure_postgres::postgres_group,
     mode    => '0750',
-  } ->
+  }
 
-  exec { "register":
-    user     => $pure_postgres::postgres_user,
-    command  => "${pure_postgres::pg_bin_dir}/repmgr_register.py",
+  -> exec { 'register':
+    user    => $pure_postgres::postgres_user,
+    command => "${pure_postgres::pg_bin_dir}/repmgr_register.py",
     unless  => "/bin/test $(${unless} | wc -l) -gt 1",
-    onlyif   => "/bin/test -f '${pure_postgres::pg_pid_file}'",
-    cwd      => $pure_postgres::pg_bin_dir,
+    onlyif  => "/bin/test -f '${pure_postgres::pg_pid_file}'",
+    cwd     => $pure_postgres::pg_bin_dir,
   }
 
 }
