@@ -35,7 +35,7 @@ class pure_repmgr::ssh
 
   Ssh_authorized_key <<| tag == $pure_repmgr::dnsname |>>
 
-  class { 'pure_postgres::ssh':
+  class { 'pure_postgres::config::ssh':
     tags => [ $pure_repmgr::dnsname, $pure_repmgr::barman_server ],
   }
 

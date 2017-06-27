@@ -48,14 +48,14 @@ class pure_repmgr::cluster_logger
     }
   }
 
-  @@pure_postgres::pg_hba {"pg_hba entry for pure_cluster_logger from ${facts['networking']['ip']}":
+  @@pure_postgres::config::pg_hba {"pg_hba entry for pure_cluster_logger from ${facts['networking']['ip']}":
     database        => 'postgres',
     method          => 'trust',
     state           => 'present',
     source          => "${facts['networking']['ip']}/32",
     connection_type => 'host',
     user            => 'pure_cluster_logger',
-    notify          => Class['pure_postgres::reload'],
+    notify          => Class['pure_postgres::service::reload'],
     tag             => $pure_repmgr::repmgr_cluster_name,
   }
 

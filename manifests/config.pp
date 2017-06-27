@@ -59,7 +59,7 @@ class pure_repmgr::config
     require => File['/etc/facter/facts.d'],
   }
 
-  Pure_postgres::Pg_hba <<| tag == $pure_repmgr::repmgr_cluster_name |>>
+  Pure_postgres::Config::Pg_hba <<| tag == $pure_repmgr::repmgr_cluster_name |>>
 
   if $facts['pure_cloud_nodeid'] {
     $nodeid = $facts['pure_cloud_nodeid']
@@ -92,22 +92,22 @@ class pure_repmgr::config
   file_line { 'wal_log_hints on':
     path   => "${pure_postgres::pg_etc_dir}/conf.d/wal.conf",
     line   => 'wal_log_hints = on',
-    notify => Class['pure_postgres::restart'],
+    notify => Class['pure_postgres::service::restart'],
   }
 
   Class['pure_postgres::config'] -> File["${pure_postgres::pg_etc_dir}/conf.d/wal.conf"]
   File["${pure_postgres::pg_etc_dir}/conf.d"] -> File["${pure_postgres::pg_etc_dir}/conf.d/wal.conf"]
   File["${pure_postgres::pg_etc_dir}/conf.d/wal.conf"] -> File_line['wal_log_hints on']
-  File["${pure_postgres::pg_etc_dir}/conf.d/wal.conf"] -> Class['pure_postgres::start']
+  File["${pure_postgres::pg_etc_dir}/conf.d/wal.conf"] -> Class['pure_postgres::service::start']
 
-  @@pure_postgres::pg_hba {"pg_hba entry for repmgr from ${facts['networking']['ip']}":
+  @@pure_postgres::config::pg_hba {"pg_hba entry for repmgr from ${facts['networking']['ip']}":
     database        => 'repmgr',
     method          => 'trust',
     state           => 'present',
     source          => "${facts['networking']['ip']}/32",
     connection_type => 'host',
     user            => 'repmgr',
-    notify          => Class['pure_postgres::reload'],
+    notify          => Class['pure_postgres::service::reload'],
     tag             => $pure_repmgr::repmgr_cluster_name,
   }
 
@@ -119,7 +119,7 @@ class pure_repmgr::config
       tag          => $pure_repmgr::repmgr_cluster_name,
     }
 
-    Pure_repmgr::Clone_standby["clone from ${facts['networking']['ip']}"] ~> Class['pure_postgres::start']
+    Pure_repmgr::Clone_standby["clone from ${facts['networking']['ip']}"] ~> Class['pure_postgres::service::start']
   } else {
     Pure_repmgr::Clone_standby <<| tag == $pure_repmgr::repmgr_cluster_name |>>
   }
@@ -152,7 +152,7 @@ class pure_repmgr::config
     if size($active_nodes) == 0 {
       #There is no node active in this cluster, so this should be an empty cluster. Let initdb do its thing.
       #Also note that initdb will only init an empty datadir.
-      include pure_postgres::initdb
+      include pure_postgres::config::initdb
     }
   }
 
@@ -165,7 +165,7 @@ class pure_repmgr::config
     #$user will be expanded by postgres and should not be expanded by puppet.
     searchpath    => [ "\"repmgr_${pure_repmgr::repmgr_cluster_name}\"", '"$user"', 'public' ],
     before        => Class['pure_repmgr::register'],
-    require       => Class['pure_postgres::reload'],
+    require       => Class['pure_postgres::service::reload'],
   }
 
   pure_postgres::sql::role {'replication':
@@ -174,7 +174,7 @@ class pure_repmgr::config
     canlogin      => true,
   }
 
-  @@pure_postgres::pg_hba {"pg_hba entry for replication from ${facts['networking']['ip']}":
+  @@pure_postgres::config::pg_hba {"pg_hba entry for replication from ${facts['networking']['ip']}":
     database        => 'replication',
     method          => 'trust',
     state           => 'present',
@@ -182,12 +182,12 @@ class pure_repmgr::config
     connection_type => 'host',
     #workaround, since repmgr can currently not handle switchover with other user for replication
     user            => 'replication,repmgr',
-    notify          => Class['pure_postgres::reload'],
+    notify          => Class['pure_postgres::service::reload'],
     tag             => $pure_repmgr::repmgr_cluster_name,
   }
 
   class {'pure_repmgr::register':
-    require          => Pure_postgres::Started['postgres started'],
+    require          => Pure_postgres::Service::Started['postgres started'],
   }
 
   if $pure_repmgr::barman_server {
