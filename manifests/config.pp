@@ -156,7 +156,7 @@ class pure_repmgr::config
     }
   }
 
-  pure_postgres::role {'repmgr':
+  pure_postgres::sql::role {'repmgr':
     with_db       => true,
     password_hash => $repmgr_password,
     superuser     => true,
@@ -168,7 +168,7 @@ class pure_repmgr::config
     require       => Class['pure_postgres::reload'],
   }
 
-  pure_postgres::role {'replication':
+  pure_postgres::sql::role {'replication':
     password_hash => $pure_repmgr::replication_password,
     replication   => true,
     canlogin      => true,

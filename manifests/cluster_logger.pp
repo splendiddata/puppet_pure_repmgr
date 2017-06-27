@@ -27,11 +27,11 @@ class pure_repmgr::cluster_logger
   if $buffercache {
     ensure_resource('package', $pure_postgres::params::pg_package_contrib, {'ensure' => 'present'})
 
-    pure_postgres::extension{ 'pg_buffercache':
+    pure_postgres::sql::extension{ 'pg_buffercache':
       require => Package[$pure_postgres::params::pg_package_contrib],
     }
 
-    pure_postgres::grant{ 'select on pg_buffercache to pure_cluster_logger':
+    pure_postgres::sql::grant{ 'select on pg_buffercache to pure_cluster_logger':
       permission  => 'select',
       object      => 'pg_buffercache',
       object_type => 'table',
@@ -39,7 +39,7 @@ class pure_repmgr::cluster_logger
       require     => [ Pure_postgres::Role['pure_cluster_logger'], Pure_postgres::Extension['pg_buffercache'] ],
     }
 
-    pure_postgres::grant{ 'execute on pg_buffercache_pages to pure_cluster_logger':
+    pure_postgres::sql::grant{ 'execute on pg_buffercache_pages to pure_cluster_logger':
       permission  => 'execute',
       object      => 'pg_buffercache_pages()',
       object_type => 'function',
@@ -71,7 +71,7 @@ class pure_repmgr::cluster_logger
     ensure  => absent,
   }
 
-  pure_postgres::role {'pure_cluster_logger':
+  pure_postgres::sql::role {'pure_cluster_logger':
     canlogin => true,
   }
 
