@@ -36,7 +36,7 @@ class pure_repmgr::cluster_logger
       object      => 'pg_buffercache',
       object_type => 'table',
       role        => 'pure_cluster_logger',
-      require     => [ Pure_postgres::Role['pure_cluster_logger'], Pure_postgres::Extension['pg_buffercache'] ],
+      require     => [ Pure_postgres::Sql::Role['pure_cluster_logger'], Pure_postgres::Sql::Extension['pg_buffercache'] ],
     }
 
     pure_postgres::sql::grant{ 'execute on pg_buffercache_pages to pure_cluster_logger':
@@ -44,7 +44,7 @@ class pure_repmgr::cluster_logger
       object      => 'pg_buffercache_pages()',
       object_type => 'function',
       role        => 'pure_cluster_logger',
-      require     => [ Pure_postgres::Role['pure_cluster_logger'], Pure_postgres::Extension['pg_buffercache'] ],
+      require     => [ Pure_postgres::Sql::Role['pure_cluster_logger'], Pure_postgres::Sql::Extension['pg_buffercache'] ],
     }
   }
 
