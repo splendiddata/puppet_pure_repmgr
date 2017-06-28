@@ -37,6 +37,14 @@ FROM (SELECT pg_catalog.pg_last_xlog_receive_location() AS receive_location,
   pg_catalog.pg_last_xact_replay_timestamp() AS replay_timestamp
   ) q'''
 
+def connstr2dict(connstr):
+    ret={}
+    for pair in connstr.split(' '):
+        if '=' in pair:
+            key, val = pair.split('=',1)
+            ret[key] = val
+    return ret
+
 def print_exception(e):
     try:
         traceback.print_exc()
@@ -53,14 +61,20 @@ class pg_cluster_logger_exception(SystemError):
     pass
 
 class pg_server():
-    def __init__(self, ip, port=5432, debug=False, conn_timeout=3):
-        self.ip               = ip
-        self.port             = port
+    def __init__(self, conn, debug=False):
+        self.conn             = conn
         self.cn               = None
         self.debug            = debug
-        self.timeout          = conn_timeout
         self.curr_starttime   = None
         self.replay_timestamp = None
+        try:
+            self.port = conn['port']
+        except:
+            self.port = 5432
+        try:
+            self.host = conn['host']
+        except:
+            self.host = 'localhost'
 
     def __del__(self):
         try:
@@ -76,7 +90,8 @@ class pg_server():
         except:
             pass
         try:
-            self.cn  = psycopg2.connect(database="postgres", user="pure_cluster_logger", host=self.ip, port=self.port, connect_timeout=self.timeout)
+            connstr = ' '.join([ '{0}={1}'.format(k, self.conn[k]) for k in self.conn.keys() ])
+            self.cn  = psycopg2.connect(connstr)
             self.cn.autocommit = True
             return True
         except psycopg2.OperationalError as e:
@@ -217,7 +232,7 @@ class pg_server():
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(0.1)
-            s.connect((self.ip, port))
+            s.connect((self.conn['host'], self.conn['port']))
         except:
             return False
         s.close()
@@ -232,7 +247,7 @@ class pg_server():
                 self.replay_timestamp = None
             elif self.curr_starttime != starttime:
                 self.curr_starttime   = starttime
-                print('{0}: resetting self.replay_timestamp'.format(self.ip))
+                print('{0}: resetting self.replay_timestamp'.format(self.conn['host']))
                 self.replay_timestamp = None
             return starttime
         except:
@@ -249,31 +264,31 @@ class pg_server():
             return {'bc_free': -1, 'bc_used': -1}
 
 class pg_cluster():
-    def __init__(self, dns, postgresport=5432, local_node_name=socket.gethostname(), logfile='/var/log/pgpure/cluster_logger/cluster_logger.log', debug=False, conn_timeout=3, bc_interval=60):
-        self.dns           = dns
-        self.postgresport  = postgresport
-        self.nodes         = {}
-        self.exceptions    = []
-        self.local_node_ip = socket.gethostbyname(local_node_name)
-        self.last_state    = None
-        self.master        = None
-        self.logfile       = logfile
-        self.logfile_obj   = None
-        self.debug         = debug
-        self.conn_timeout  = conn_timeout
-        self.last_log      = time.time()
-        self.bc_interval   = bc_interval
-        self.last_bc_check = 0
+    def __init__(self, port=5432, local_node_name=socket.gethostname(), logfile='/var/log/pgpure/cluster_logger/cluster_logger.log', debug=False, conn_timeout=3, bc_interval=60):
+        self.port            = port
+        self.nodes           = {}
+        self.exceptions      = []
+        self.local_node_name = local_node_name
+        self.last_state      = None
+        self.master          = None
+        self.logfile         = logfile
+        self.logfile_obj     = None
+        self.debug           = debug
+        self.conn_timeout    = conn_timeout
+        self.last_log        = time.time()
+        self.bc_interval     = bc_interval
+        self.last_bc_check   = 0
 
     def update_nodelist(self):
         nodes = {}
         master = None
-        for ip in self.ipsfromdns():
+        for conn in self.clusternodes():
+            host = conn['host']
             try:
-                server = self.nodes[ip]
+                server = self.nodes[host]
             except:
-                server = pg_server(ip=ip, port=self.postgresport, debug=self.debug, conn_timeout=self.conn_timeout)
-            nodes[ip] = server
+                server = pg_server(conn, debug=self.debug)
+            nodes[host] = server
             if server.master():
                 if master:
                     self.exceptions.append('Multiple masters in this cluster...')
@@ -287,11 +302,16 @@ class pg_cluster():
         self.nodes  = nodes
         self.master = master
 
-    def ipsfromdns(self):
-        IPs = socket.gethostbyname_ex(self.dns)
-        if not IPs:
-            raise pg_cluster_logger_exception('no IPs found by DNS {0}.'.format(self.dns))
-        return sorted(IPs[2])
+    def clusternodes(self):
+        cn = psycopg2.connect(database='repmgr', port=self.port, host=self.local_node_name, user='repmgr')
+        cur=cn.cursor()
+        cur.execute('select conninfo from repl_nodes')
+        for r in cur:
+            conn = connstr2dict(r[0])
+            conn['dbname'] = 'postgres'
+            conn['user'] = 'pure_cluster_logger'
+            conn['connect_timeout'] = self.conn_timeout
+            yield conn
 
     def update_node_info(self):
         for node in self.nodes:
@@ -309,18 +329,18 @@ class pg_cluster():
         try:
             if not master_is_valid:
                 master_is_valid = self.master.master()
-            state['master'] = self.master.ip
+            state['master'] = socket.gethostbyname(self.master.host)
         except:
             state['master'] = 'unknown'
 
         try:
-            self.master.heartbeat(self.local_node_ip)
+            self.master.heartbeat(self.local_node_name)
         except Exception as e:
             print(e)
             pass
 
         try:
-            localnode          = self.nodes[self.local_node_ip]
+            localnode          = self.nodes[self.local_node_name]
             state['max_con']   = localnode.config_parameter('max_connections')
             state['con']       = localnode.num_connections()
             state['role']      = localnode.replication_role()
@@ -426,7 +446,6 @@ if __name__ == "__main__":
     default_postgresport = get_default(settings, 'postgresport', 5432)
     default_min_interval = get_default(settings, 'cluster_logger_min_interval', 1)
     default_max_interval = get_default(settings, 'cluster_logger_max_interval', 86400)
-    default_dns          = get_default(settings, 'dnsname', get_default(settings, 'cluster', None))
     default_nodename     = get_default(settings, 'node_name', socket.gethostname())
     default_logfile      = get_default(settings, 'cluster_logger_logfile', '/var/log/pgpure/cluster_logger/cluster_logger.log')
     default_conn_timeout = get_default(settings, 'pgsql_connection_timeout', 3)
@@ -435,7 +454,6 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Check cluster status and log.')
     parser.add_argument('-b', '--bcinterval', default=default_bc_interval, help='Interval for checking buffercache.')
-    parser.add_argument('-d', '--dns', default=default_dns, help='DNS name to read (Without domain, domain name from machine is used).')
     parser.add_argument('-i', '--interval', default=default_min_interval, help='Interval for checking.')
     parser.add_argument('-l', '--logfile', default=default_logfile, help='Logfile for writing log to.')
     parser.add_argument('-m', '--maxinterval', default=default_max_interval, help='Max interval for logging.')
@@ -446,20 +464,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if not args.dns:
-        print('You should set the DNS of this cluster\n- with --dns, or\n- in inifile /etc/pgpure/cluster_logger/cluster_logger.ini or\n- in config file /etc/repmgr.conf')
-        sys.exit()
-
-    if not '.' in args.dns:
-        try:
-            domain_name = socket.getfqdn().split('.',1)[1]
-            dns = "{0}.{1}".format(args.dns, domain_name)
-        except:
-            dns = args.dns
-    else:
-        dns = args.dns
-
-    cluster = pg_cluster(dns, postgresport=args.port, local_node_name=args.nodename, logfile=args.logfile, debug=args.debug, conn_timeout=args.conntimeout)
+    cluster = pg_cluster(port=args.port, local_node_name=args.nodename, logfile=args.logfile, debug=args.debug, conn_timeout=args.conntimeout)
     signal.signal(signal.SIGUSR1, lambda x, y: cluster.log_to_file())
     last_state = None
     
