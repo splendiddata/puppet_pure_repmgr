@@ -47,7 +47,7 @@ class pure_repmgr::install
     autorestart => $pure_repmgr::autorestart,
   }
 
-  if $pure_repmgr::config::cluster_logger {
+  if $pure_repmgr::cluster_logger {
     include pure_repmgr::config::cluster_logger
   }
 
