@@ -305,7 +305,7 @@ class pg_cluster():
     def clusternodes(self):
         cn = psycopg2.connect(database='repmgr', port=self.port, host=self.local_node_name, user='repmgr')
         cur=cn.cursor()
-        cur.execute('select conninfo from repl_nodes')
+        cur.execute('select conninfo from repmgr_<%= $pure_repmgr::repmgr_cluster_name %>.repl_nodes')
         for r in cur:
             conn = connstr2dict(r[0])
             conn['dbname'] = 'postgres'
