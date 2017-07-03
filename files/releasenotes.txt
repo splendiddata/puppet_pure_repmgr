@@ -1,3 +1,9 @@
+1.1.1: 
+- Cluster logger doesn't use DNS. From now on, deploying a new cluster can finish without DNS properly setup
+- Moved some manifests to subfolders for clarity
+- Puppet lint
+- Small issue in pure_repmgr_facts script. Added Exception as e so that Exceptions are properly outputen in debug mode
+
 1.1.0: Cleanup, commenting, less dependant of facts and copyrights
 - Cleanup with puppet lint
 - Added a line to some files and templates stating that the file is managed by puppet
