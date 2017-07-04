@@ -1,4 +1,7 @@
-1.1.1: 
+1.1.2: Cleanup
+- Commenting in templates/pure_cluster_logger.epp
+
+1.1.1: Deploy without Round Robin DNS, Cleanup and small issue in pure_repmgr_facts script
 - Cluster logger doesn't use DNS. From now on, deploying a new cluster can finish without DNS properly setup
 - Moved some manifests to subfolders for clarity
 - Puppet lint
