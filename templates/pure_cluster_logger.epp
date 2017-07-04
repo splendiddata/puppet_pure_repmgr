@@ -29,90 +29,153 @@ try:
 except:
     psycopg2 = None
 
-lag_query = '''SELECT CASE WHEN (receive_location IS NULL OR receive_location < replay_location) THEN replay_location ELSE receive_location END AS receive_location,
-replay_location,
-replay_timestamp
-FROM (SELECT pg_catalog.pg_last_xlog_receive_location() AS receive_location,
-  pg_catalog.pg_last_xlog_replay_location()  AS replay_location,
-  pg_catalog.pg_last_xact_replay_timestamp() AS replay_timestamp
-  ) q'''
-
+'''
+This simple function can be used to convert a connectstring, consisting of space seperated a=b key value pairs
+into a dictionary. Example:
+connstr               = 'host=server1 port=5432 username=repmgr'
+connstr2dict(connstr) = { 'host': 'server1', 'port': '5432', 'username': 'repmgr' }
+'''
 def connstr2dict(connstr):
+    #create return dict
     ret={}
+    #split by ' ' character
     for pair in connstr.split(' '):
+        #split by '=' character
         if '=' in pair:
-            key, val = pair.split('=',1)
+            key, val = pair.split('=', 1)
             ret[key] = val
     return ret
 
+'''
+This simple helper function can be used to print an exception.
+'''
 def print_exception(e):
     try:
         traceback.print_exc()
     except:
         print('Could not handle exception {}'.format(str(e)))
 
+'''
+This function converts a LSN to a integer, which points to an exact byte in the wal stream.
+'''
 def lsn_to_xlogrecptr(lsn):
+    #Split by '/' character
     xlogid, xrecoff = lsn.split('/')
+
+    #Convert both from hex to int
     xlogid  = int(xlogid, 16)
     xrecoff = int(xrecoff, 16)
-    return xlogid * 16 * 1024 * 1024 * 255 + xrecoff
 
+    #multiply wal file nr to offset by multiplying with 2**32, and add offset in file to come to absolute int position of lsn
+    #return result
+    return xlogid * 2**32 + xrecoff
+
+'''
+This exception is raised when cluster logger object runs into an issue.
+'''
 class pg_cluster_logger_exception(SystemError):
     pass
 
+'''
+This object can connect to a postgres database server.
+And it holds many functions that can be run on the connection and returns the info as expected.
+'''
 class pg_server():
+    '''
+    This function initializes the object.
+    '''
     def __init__(self, conn, debug=False):
+        #Set some internal variables
         self.conn             = conn
         self.cn               = None
         self.debug            = debug
         self.curr_starttime   = None
         self.replay_timestamp = None
         try:
+            #Set port to setting in conn object
             self.port = conn['port']
         except:
+            #Port not set, Set to default.
             self.port = 5432
         try:
+            #Set hostname to setting in conn object
             self.host = conn['host']
         except:
+            #Hostname not set. Set to localhost
             self.host = 'localhost'
 
+    '''
+    This function closes postgres connection when the object is discarded.
+    '''
     def __del__(self):
         try:
             self.cn.close()
         except AttributeError:
             pass
 
+    '''
+    This function connects to a postgres database with settings from the object.
+    '''
     def connect(self):
         try:
+            #If connection is in a valid state
             if self.cn.closed == 0:
+                #Check that connection is functioning properly
                 if self.replication_role() != 'unknown':
                     return True
         except:
             pass
+
         try:
+            #create a connectstring from a dictionary of connection parameters
             connstr = ' '.join([ '{0}={1}'.format(k, self.conn[k]) for k in self.conn.keys() ])
+            #connect
             self.cn  = psycopg2.connect(connstr)
+            #enable autocommit
             self.cn.autocommit = True
+            #done
             return True
         except psycopg2.OperationalError as e:
+            #Print exception, cleanup and return False to tell the caller that it failed.
             if self.debug:
                 print_exception(e)
             self.cn  = None
             return False
 
+    '''
+    This function can run a query over the connection to the database.
+    It returns the result as a list of dicts. Every row is a list item. 
+    And every col is a dict element with key=colname and val = colvalue.
+    Example:
+      sql="select oid, datname from pg_database where datname in ('postgres', 'repmgr')"
+      ret=[ { 'oid': 13323, 'datname': 'postgres' }, { 'oid': 16393, 'datname': 'repmgr' } ]
+    You can use a query with parameters, like "select oid, datname from pg_database where datname = %s".
+    In that case you can pass parameters as a tuple, like ('postgres',).
+    Please understand that ('postgres') is a string and not a tuple with one element, where ('postgres',) is a tuple.
+    '''
     def run_sql(self, sql, params=None):
         try:
+            #Check if connecting is required
             if self.cn.closed != 0:
                 raise Exception('Connection closed')
         except:
+            #Seems required. Connect.
             self.connect()
+
         try:
+            #Define new cursor
             cur=self.cn.cursor()
+            #Execute query
             cur.execute(sql, params)
+            #Check that column names have returned. If not, it was probably not a select returning data.
             if cur.description:
+                #Loop through columns and create a list of column names
                 columns = [i[0] for i in cur.description]
+                #Loop through records and create dicts of col=val elements. Add all dicts to a list
                 ret = [dict(zip(columns, row)) for row in cur]
+                #Close cursor
                 cur.close()
+                #return list with dicts
                 return ret
             else:
                 #Seems this query returned no results
@@ -126,6 +189,9 @@ class pg_server():
                 print(e)
             return None
 
+    '''
+    This function checks the role of the database server. It returns standby, master or unknown.
+    '''
     def replication_role(self):
         is_in_recovery = self.run_sql('SELECT pg_is_in_recovery() as is_in_recovery')
         if not is_in_recovery:
@@ -135,86 +201,149 @@ class pg_server():
         else:
             return 'master'
 
+    '''
+    This function checks if the database server is a master.
+    It returns true for master db servers and false for other situations.
+    '''
     def master(self):
         if self.replication_role() == 'master':
             return True
         return False
 
+    '''
+    This function checks if the database server is a standby.
+    It returns true for standby db servers and false for other situations.
+    '''
     def standby(self):
         if self.replication_role() == 'standby':
             return True
         return False
 
+    '''
+    This function updates timestamp in pure_cluster_logger table.
+    It generates a minimal load on master which helps in proper lag detection.
+    Without any load, replay_timestamp would be stuck at last transaction 
+    timestamp and lag_sec would grow, while there is no actual lag.
+    '''
     def heartbeat(self, host):
-        #This function updates timestamp in pure_cluster_logger table.
-        #It is only meant for generating a minimal load on master for proper lag detection.
         if not self.master():
+            #This may seem strange, but only master can write, so we can only use master connection for heartbeat traffic.
+            #We update the correct row in the table, because we use host parameter of this function in where clause...
             return None
         try:
+            #if row exists, update, if it doesn't exist, insert. If table doesn't exist, Exception.
             self.run_sql("insert into pure_cluster_heartbeat (server, updated) values(%s, now()) on conflict (server) do update set updated=now()", (host,))
         except psycopg2.ProgrammingError:
             try:
+                #Exception. Probably table doesn;t exist yet. Create.
                 self.run_sql('create table if not exists pure_cluster_heartbeat ( server varchar CONSTRAINT pk_pure_cluster_heartbeat PRIMARY KEY , updated timestamp)')
             except Exception as e:
+                #Cannot create table either. Don't know what is wrong, but heartbeat doesn't work.
                 print(e)
                 print('Could not create pure_cluster_heartbeat table. Lag monitoring might not be accurate.')
 
+    '''
+    This function returns a dict with the info required from master for lag detection.
+    This has LSN of the receive location, the replay location and the replay timestamp.
+    '''
     def standby_lag_info(self):
         if not self.standby():
+            #Not standby. Skip this.
             return None
+        lag_query = '''SELECT CASE WHEN (receive_location IS NULL OR receive_location < replay_location) 
+                               THEN replay_location ELSE receive_location END AS receive_location,
+                           replay_location,
+                           replay_timestamp
+                       FROM (SELECT pg_catalog.pg_last_xlog_receive_location() AS receive_location,
+                           pg_catalog.pg_last_xlog_replay_location()  AS replay_location,
+                           pg_catalog.pg_last_xact_replay_timestamp() AS replay_timestamp
+                       ) q'''
+        #Run the query and get result
         lag_info = self.run_sql(lag_query)
         if not lag_info:
              return None
+        #Return first row of the result
         return lag_info[0]
 
+    '''
+    This function returns a dict with the info required from master for lag detection.
+    This has the current timestamp on the master, and the current LSN (absolute position in the wal file).
+    '''
     def master_lag_info(self):
         if not self.master():
+            #Only run on master.
             return None
         try:
+            #Query the info
             lag_info = self.run_sql('SELECT current_timestamp as ts, pg_catalog.pg_current_xlog_location() as xlog_location')
         except Exception as e:
             print(e)
+
         if not lag_info:
-             return False
+            return False
+        #Return the data
         return lag_info[0]
 
+    '''
+    This function collects info required to detect lag, from standby, and from master.
+    Then the data is processed and lag info is returned.
+    '''
     def lag_info(self, master):
         try:
+            #Collect info from master
             master_repl_info = master.master_lag_info()
             masterts, masterxlogrecptr = master_repl_info['ts'], lsn_to_xlogrecptr(master_repl_info['xlog_location'])
         except:
             raise pg_cluster_logger_exception('Cannot detect lag without master lag info')
+        #Collect info from standby
         my_repl_info = self.standby_lag_info()
         if not my_repl_info:
             return None
 
-        myts         = my_repl_info['replay_timestamp']
+        #Sanity checks on timestamp info from standby
+        myts = my_repl_info['replay_timestamp']
         if not self.replay_timestamp:
             self.replay_timestamp = myts
         elif myts < self.replay_timestamp:
             print('Not reporting lag info. Invalid data. Previous replay ts ({0}) > current replay ts ({1})'.format(self.replay_timestamp, myts))
             return None
+        #change lsn to absolute wal pointer for receive and replay
         myxlogrecptr = lsn_to_xlogrecptr(my_repl_info['receive_location'])
         myxlogrepptr = lsn_to_xlogrecptr(my_repl_info['replay_location'])
 
+        #detect lags
         lsn_rec_lag = masterxlogrecptr - myxlogrecptr
         lsn_rep_lag = masterxlogrecptr - myxlogrepptr
         ts_lag      = int(round((masterts - myts).total_seconds()))
 
+        #Return a tuple of lags
         return (ts_lag, lsn_rep_lag, lsn_rec_lag)
 
+    '''
+    This function can be used to query a config parameter (running state)
+    '''
     def config_parameter(self, key):
         result = self.run_sql('select setting from pg_settings where name = %s', (key,))
         if result:
             return result[0]['setting']
         return None
 
+    '''
+    This function queries the number of connections.
+    '''
     def num_connections(self):
         result = self.run_sql('SELECT sum(numbackends) as connections FROM pg_stat_database')
         if result:
             return result[0]['connections']
         return None
 
+    '''
+    This function can be used to check connectivity to the server listening on self.host.
+    3: up and running
+    2: No postgres access (hba rule prevents, no password, no user, etc.
+    1: No access to postgres port. Probably firewall or not postgres running.
+    0: Server unavailable (no connection on pg port, no connection on ssh port).
+    '''
     def accesslevel(self):
         if self.num_connections():
             ret = 3
@@ -226,44 +355,80 @@ class pg_server():
             ret = 0
         return ret
 
+    '''
+    This function can check accessibility of a port running on self.host.
+    It returns true if the port can be accessed.
+    It returns false if the port cannot be accessed (probably due to firewall, service not running, or server down).
+    '''
     def check_connectivity(self, port=None):
         if not port:
+            #Port not set. Set to postgres port of this server
             port=self.port
         try:
+            #Open socket, connect timeout 0.1 sec.
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(0.1)
-            s.connect((self.conn['host'], self.conn['port']))
+            s.connect((self.host, port))
         except:
+            #Could not open connection
             return False
+        #Cleanup and return succes
         s.close()
         return True
 
+    '''
+    This function can check startup time of postgres
+    '''
     def starttime(self):
         try:
+            #Query pg_postmaster_start_time()
             result = self.run_sql('select pg_postmaster_start_time() as starttime')
+
+            #Convert to string
             starttime = result[0]['starttime'].strftime('%s')
+
+            #Check with last result of this function
             if not self.curr_starttime:
+                #Starttime was not set. Probably first run. 
+                #Update starttime and invalidate self.replay_timestamp (last replay timestamp can be changed in restart).
                 self.curr_starttime   = starttime
                 self.replay_timestamp = None
             elif self.curr_starttime != starttime:
+                #Starttime changed. update and invalidate self.replay_timestamp (last replay timestamp can be changed in restart).
                 self.curr_starttime   = starttime
                 print('{0}: resetting self.replay_timestamp'.format(self.conn['host']))
                 self.replay_timestamp = None
             return starttime
         except:
+            #Something went wrong. Return invalid value.
             return None
 
+    '''
+    This function returns the buffercache usage.
+    The query can introduce a minimal amount of locking, so it should only be used with great care.
+    Therefore you can set the interval for running this functionality in the pg_cluster class, which calls this function.
+    '''
     def buffercache_usage(self):
         try:
+            #Create a dict to hold results
             bc_stats = {}
+            #Run query to find bc usage info
             result = self.run_sql("select CASE (reldatabase IS NULL) WHEN true THEN 'bc_free' ELSE 'bc_used' END AS state, count(*) AS num from pg_buffercache b group by (reldatabase IS NULL)")
+            #Collect data in bc_stats dict
             for r in result:
                 bc_stats[r['state']] = r['num']
+            #return data
             return bc_stats
         except:
             return {'bc_free': -1, 'bc_used': -1}
 
+'''
+This class is used to hold all data on an entire cluster of pg_server objects.
+'''
 class pg_cluster():
+    '''
+    Things to do when initializing.
+    '''
     def __init__(self, port=5432, local_node_name=socket.gethostname(), logfile='/var/log/pgpure/cluster_logger/cluster_logger.log', debug=False, conn_timeout=3, bc_interval=60):
         self.port            = port
         self.nodes           = {}
@@ -278,61 +443,93 @@ class pg_cluster():
         self.last_log        = time.time()
         self.bc_interval     = bc_interval
         self.last_bc_check   = 0
+        self.bc_usage        = None
 
+    '''
+    Things to do to update the node list, and find the master.
+    '''
     def update_nodelist(self):
+        #Create a new dictionary to hold the servers.
         nodes = {}
+        #Master is not yet found
         master = None
+        #Loop through the connections returned by the clusternodes function.
         for conn in self.clusternodes():
+            #Set hostname
             host = conn['host']
             try:
+                #Find the host if it was already defined
                 server = self.nodes[host]
             except:
+                #Not yet defined. Create a new object.
                 server = pg_server(conn, debug=self.debug)
+            #Add to nodes dict
             nodes[host] = server
             if server.master():
+                #It is a master
                 if master:
+                    #But another one was a master too???
                     self.exceptions.append('Multiple masters in this cluster...')
                 else:
+                    #Point master to this pg_server
                     master = server
-        old_nodes = set(self.nodes.keys()) - set(nodes.keys())
 
+        #Cleanup nodes that are not part of this cluster anymore
+        old_nodes = set(self.nodes.keys()) - set(nodes.keys())
         for node in old_nodes:
             server = self.nodes[node]
             server.__del__()
+        #Update self
         self.nodes  = nodes
         self.master = master
 
+    '''
+    This function connects to the local instance to find out from repmgr db which cluster nodes exist.
+    '''
     def clusternodes(self):
+        #Connect to me
         cn = psycopg2.connect(database='repmgr', port=self.port, host=self.local_node_name, user='repmgr')
+        #open a cursor and query the repl_nodes table
         cur=cn.cursor()
         cur.execute('select conninfo from repmgr_<%= $pure_repmgr::repmgr_cluster_name %>.repl_nodes')
+        #Loop through the table and return connections
         for r in cur:
+            #Convert connectring to dict of connect options
             conn = connstr2dict(r[0])
+            #Change some options
             conn['dbname'] = 'postgres'
             conn['user'] = 'pure_cluster_logger'
             conn['connect_timeout'] = self.conn_timeout
+            #return this element
             yield conn
 
-    def update_node_info(self):
-        for node in self.nodes:
-            node.update_lag()
-
+    '''
+    This function prints the state of the cluster (nodes available, lag of this standby, etc.)
+    '''
     def __str__(self):
+        #Create a dict to hold the results
         state     = {}
+
+        #Check if master is valid
         master_is_valid = False
         try:
             master_is_valid = self.master.master()
             if not master_is_valid:
                 raise Exception('Master is no master')
         except:
+            #Not valid yet. update_nodelist() might fix this.
             self.update_nodelist()
+
+        #Check again if master is valid
         try:
             if not master_is_valid:
                 master_is_valid = self.master.master()
             state['master'] = socket.gethostbyname(self.master.host)
         except:
+            #Master is still not valid. COntinue with invalid master
             state['master'] = 'unknown'
 
+        #heartbeat function will use master connection to update record in heartbeat table for this node
         try:
             self.master.heartbeat(self.local_node_name)
         except Exception as e:
@@ -340,19 +537,20 @@ class pg_cluster():
             pass
 
         try:
+            #Find info on local node
             localnode          = self.nodes[self.local_node_name]
             state['max_con']   = localnode.config_parameter('max_connections')
             state['con']       = localnode.num_connections()
             state['role']      = localnode.replication_role()
             state['starttime'] = localnode.starttime()
             now = time.time()
-            if now - self.last_bc_check > self.bc_interval:
+            if not self.bc_usage or now - self.last_bc_check > self.bc_interval:
                 self.bc_usage  = localnode.buffercache_usage()
                 self.last_bc_check = now
             for key in ['bc_free','bc_used']:
                 state[key] = self.bc_usage[key]
-
         except pg_cluster_logger_exception as e:
+            #Local node not happy. Set values to defaults
             if self.debug:
                 print_exception(e)
             localnode          = None
@@ -364,85 +562,123 @@ class pg_cluster():
                 state[key] = -1
 
         try:
-            lag              = localnode.lag_info(self.master)
+            #Detect lag off local node checked against master
+            lag = localnode.lag_info(self.master)
         except Exception as e:
             lag = None
             if self.debug:
                 print_exception(e)
+
         if lag:
+            #Set lag info in result
             state['lag_sec']     = lag[0]
             state['lag_replay']  = lag[1]
             state['lag_receive'] = lag[2]
         else:
+            #Set lag info in result to defaults
             state['lag_sec']     = 0
             state['lag_replay']  = 0
             state['lag_receive'] = 0
 
+        #Detect availability level of the nodes of this cluster
         nodes_level = [ 0, 0, 0, 0 ]
         for k in self.nodes:
             n = self.nodes[k]
             l = n.accesslevel()
             nodes_level[n.accesslevel()] += 1
+        #Set availability level of the nodes of this cluster in result
         state['nodes_down'] = nodes_level[0]
         state['nodes_ssh']  = nodes_level[1]
         state['nodes_psql'] = nodes_level[2]
         state['nodes_up']   = nodes_level[3]
 
+        #Sort results by key and concat to a string of key=val pairs.
         ret = " ".join(["{0}={1}".format(k, state[k]) for k in sorted(state.keys()) ])
+        #Return result
         return ret
 
+    '''
+    Log the status to a file.
+    '''
     def log_to_file(self, msg=None):
         if not msg:
+            #If no msg was set, use __str__ function to retrieve a string holding result
             msg=str(self)
         if not self.logfile_obj:
+            #Logfile not opened yet. Open it.
             self.logfile_obj = open(self.logfile, 'a')
 
+        #Add datetime to log line
         line  = "{0}: {1}".format(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), msg)
         if self.debug:
             print(line)
-
+        #Write to file
         self.logfile_obj.write(line+'\n')
         self.logfile_obj.flush()
+        #Set new last_log (so you can later check if the max interval has expired)
         self.last_log = time.time()
 
+'''
+This little wrapper function gets a value from a vey/val dict or returns a default.
+'''
 def get_default(settings, key, default):
     try:
+        #If it is set, return it
         return settings[key]
     except:
+        #If not, return default instead.
         return default
 
+'''
+This little wrapper function can parse  many config files and create a key=val dict.
+key=val pairs read later will overwrite earlier versions with samen key.
+'''
 def process_config_files(list_of_config_files, debug=False):
+    #Create an empty dict to hold the values
     settings={}
+    #loop through list of config files
     for f in list_of_config_files:
         try:
+            #open the file
             with open(f) as configfile:
+                #Loop through the lines
                 for l in configfile:
                     #take out comment
                     l=l.split('#')[0]
+                    #Check validity
                     if '=' in l:
+                        # Split by first '='
                         k,v = l.split('=',1)
+                        #Cleanup
                         k=k.strip()
                         v=v.strip()
+                        #Check contains data
                         if len(v) > 0 and len(k) > 0:
+                            #write to dict
                             settings[k]=v
         except IOError as e:
             if debug:
                 print_exception(e)
             pass
+    #Return the dict with key=val pairs
     return settings
 
 if __name__ == "__main__":
     import sys
     import signal
  
+    '''
+    Stop on SIGTERM
+    '''
     def signal_term_handler(signal, frame):
         print 'got SIGTERM'
         sys.exit(0)
- 
     signal.signal(signal.SIGTERM, signal_term_handler)
 
+    #Proces al config files into a key=val dict of config items called settings
     settings = process_config_files([ '/etc/repmgr.conf', '/etc/pgpure/cluster_logger/cluster_logger.ini' ])
 
+    #Set defaults from settings dict (or use default if not in there)
     default_postgresport = get_default(settings, 'postgresport', 5432)
     default_min_interval = get_default(settings, 'cluster_logger_min_interval', 1)
     default_max_interval = get_default(settings, 'cluster_logger_max_interval', 86400)
@@ -451,6 +687,7 @@ if __name__ == "__main__":
     default_conn_timeout = get_default(settings, 'pgsql_connection_timeout', 3)
     default_bc_interval  = get_default(settings, 'buffercache_interval', 60)
 
+    #Parse command line arguments
     import argparse
     parser = argparse.ArgumentParser(description='Check cluster status and log.')
     parser.add_argument('-b', '--bcinterval', default=default_bc_interval, help='Interval for checking buffercache.')
@@ -464,19 +701,29 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    cluster = pg_cluster(port=args.port, local_node_name=args.nodename, logfile=args.logfile, debug=args.debug, conn_timeout=args.conntimeout)
+    #Create a cluster object to hold the server objects and cluster wide data
+    cluster = pg_cluster(port=args.port, local_node_name=args.nodename, logfile=args.logfile, debug=args.debug, conn_timeout=args.conntimeout, bc_interval=args.bcinterval)
+
+    #On SIGUSR1 write line to file
     signal.signal(signal.SIGUSR1, lambda x, y: cluster.log_to_file())
     last_state = None
-    
+
+    #Keep looping until SIGTERM or Keyboardinterupt
     while True:
+        #Capture current time
         now = time.time()
         try:
+            #Capture current state
             state = str(cluster)
+            #If state changed or maxinterval has elapsed, log state to file
             if state != last_state or (now - cluster.last_log > int(args.maxinterval)):
                 cluster.log_to_file(state)
+            #Set laststate to currentstate
             last_state = state
         except KeyboardInterrupt:
+            #Quit on KeyboardInterrupt
             sys.exit(0)
+        #Handle all other exceptions and continue
         except pg_cluster_logger_exception as e:
             print_exception(e)
         except Exception as e:
