@@ -1,3 +1,9 @@
+1.1.3: Changed behaviour of generating new nodeid.
+- Previous solution did clone with nodeid 100, which was also then used in replicationslot name which ended up in recovery.conf.
+  That solution didn't work with more than one standby, since they both wanted to replicate using same replication slot.
+  New solution is a complex python script that finds master, detects a free nodeid, registers it immediately and then uses that for cloning.
+  New solution works with multiple standbys too.
+
 1.1.2: Cleanup
 - Commenting in templates/pure_cluster_logger.epp
 
