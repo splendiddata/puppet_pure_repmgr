@@ -1,0 +1,227 @@
+#!/bin/env python
+
+'''
+# Copyright (C) 2017 Collaboration of KPN and Splendid Data
+#
+# This file is part of puppet_pure_postgres.
+#
+# puppet_pure_barman is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# puppet_pure_postgres is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with puppet_pure_postgres.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+'''
+register.py is a smart script that 
+* connects to postgres locally, 
+* finds replication config in repmgr db, 
+* connects to master, 
+* checks necessity for registering, 
+* generates a unique nodeid, 
+* creates a repmgr.conf usable for registering, and 
+* runs register command.
+
+1: register.py is run from puppet when a new standby is cloned, or a master is init'ed.
+2: On next run, nodeid will be read from postgres as a fact by /etc/facter/facts.d/pure_repmgr_facts.sh
+   and added to the main repmgr.conf.
+This order is applied on purpose. If more than one standby would try to register with the exact same unique id,
+all but one would fail, and tried again the next run, which would be ok. Adding a nodeid to to original repmgr.conf
+would leave an incosistent situation (more than one node having same nodeid in repmgr.conf) which is harder to resolve automated.
+
+Also note that it is required to set nodeid during clone. However, in our case nodeid is set by register.py.
+Therefore nodeid is set to 100 if the fact script could not read it from the database.
+For this reason the value of nodeid in repmgr.conf is disregarded by this script and is set by puppet after registeration was succesful.
+'''
+
+import sys
+import psycopg2
+import re
+import subprocess
+import tempfile
+
+if __name__ == "__main__":
+
+    #Parse command line arguments
+    import argparse
+    parser = argparse.ArgumentParser(description='Check cluster status and log.')
+    parser.add_argument('-p', '--port', default=5432, help='Port at which postgres is listening.')
+    parser.add_argument('-D', '--datadir', default='/var/pgpure/postgres/9.6/data/', help='Location of database files')
+    parser.add_argument('-f', '--repmgr_file', default='/etc/repmgr.conf', help='Location of repmgr.conf')
+    parser.add_argument('-H', '--upstreamhost', help='Hostname of the upstream host')
+
+    args = parser.parse_args()
+
+    master   = None
+    nodeid   = None
+    repmgrfile = args.repmgr_file
+
+    print('Reading {0}'.format(args.repmgr_file))
+    repmgrconf={}
+    f=open(repmgrfile)
+    for l in f:
+        #Everything after a '#' sign is comment and should be ignored
+        l=l.split('#')[0]
+        #a valid line should have '=' sign. Skip lines that dont (probably nothing but comment and spaces).
+        if not '=' in l:
+            continue
+        k, v = l.split('=', 1)
+        #Add value to dict with key as key. Strip spaces from key and val.
+        repmgrconf[k.strip()] = v.strip()
+
+    #So now we have parsed the repmgr conf file. Lets set some variablen from that and check some validity checks.
+    try:
+        clustername=repmgrconf['cluster']
+        if re.search('[^a-zA-Z0-9]+', clustername):
+            print('{0} contains an invalid clustername "{0}". Quiting to prevent sql injection.'.format(repmgrfile, clustername))
+            sys.exit(-2)
+    except Exception as e:
+        print(e)
+        print('Something went wrong reading clustername from '+repmgrfile)
+        sys.exit(-3)
+    try:
+       nodename=repmgrconf['node_name']
+    except:
+       nodename=None
+
+    #Lets find master. First check upstream host.
+    print('Connecting to upstream host.')
+    try:
+        cn=psycopg2.connect(host=args.upstreamhost, user='repmgr', dbname='repmgr')
+        cur=cn.cursor()
+    except:
+        print('Could not connect. Is the upstream instance running and accepting connections?')
+        sys.exit(-1)
+    
+    print('Checking replication role of the upstream node')
+    try:
+       cur.execute('select pg_is_in_recovery()')
+       r=cur.next()
+       if r[0]:
+          print('This upstream instance is standby. I will read cluster config from repmgr database and try to find master from that.')
+       else:
+          print('This upstream instance is a master.')
+          master=cur
+          role='master'
+    except Exception as e:
+       print(e)
+       print('Could not detect replication role')
+       sys.exit(-2)
+    
+    if not master:
+       print('Looking for master.')
+       try:
+          cur.execute('select conninfo from repmgr_{0}.repl_nodes'.format(clustername))
+          for r in cur:
+             constr=r[0]
+             print('Checking {0}'.format(constr))
+             try:
+                cn2=psycopg2.connect(constr)
+             except Exception as e:
+                print(e)
+                print('Could not connect to {0}. Skipping.'.format(constr))
+                continue
+             try:
+                print('  Checking replication role.')
+                cur2=cn2.cursor()
+                cur2.execute('select pg_is_in_recovery()')
+                r=cur2.next()
+                if r[0]:
+                   print('  Instance is standby.')
+                   cur2.close()
+                   cn2.close()
+                else:
+                   print('  Instance is master. Master detected.')
+                   master=cur2
+                   break
+             except Exception as e:
+                print(e)
+                print('Something when wrong detecting role of {0}'.format(constr))
+       except Exception as e:
+          print(e)
+          print('Could not find connectstrings of other cluster nodes.')
+    
+    if not master:
+       print('No master detected. Cannot continue.')
+       sys.exit(-5)
+
+    #So now we have a connection to the master database server.
+
+    print('Checking if this node was already registered.')
+    try:
+        master.execute('select id from repmgr_{0}.repl_nodes where name = %s'.format(clustername), (nodename,))
+        r=master.next()
+        if r[0]:
+            nodeid = r[0]
+            print('Already registered as node {0}.'.format(nodeid))
+    except Exception as e:
+        pass
+
+    if not nodeid and 'node' in repmgrconf.keys():
+        nodeid = repmgrconf['node']
+
+    if not nodeid:
+        print('Determining next free nodeid.')
+        try:
+            print('Determining next free nodeid.')
+            master.execute('select max(id) from repmgr_{0}.repl_nodes'.format(clustername))
+            r=master.next()
+            nodeid=r[0]+1
+        except:
+            nodeid=2
+
+    #So now we have a nodeid. Is it already registered?
+    try:
+        master.execute('select name from repmgr_{0}.repl_nodes where id = %s'.format(clustername), (nodeid,))
+        r=master.next()
+        registerednode = r[0]
+    except:
+        print('node not yet registered in repmgr_{0}.repl_nodes. Lets do it right now.'.format(clustername))
+        master.execute('ROLLBACK')
+        qry = 'insert into repmgr_{0}.repl_nodes'.format(clustername)
+        qry += ' (id, type, upstream_node_id, cluster, name, conninfo, slot_name, priority, active)'
+        qry += "values(%s, 'standby', Null, %s, %s, %s, %s, 100, true)"
+        conninfo = repmgrconf['conninfo'].replace("'", "")
+        repslot = 'repmgr_slot_'+str(nodeid)
+        master.execute(qry, (nodeid, clustername, nodename, conninfo, repslot))
+        registerednode = nodename
+
+    if registerednode != nodename:
+        print('nodeid {0} has another hostname registered for it. {1} != {2}. I cannot continue.'.format(nodeid, registerednode, nodename))
+        sys.exit(-2)
+
+    try:
+        qry =  'update repmgr_{0}.repl_nodes set upstream_node_id = upstream.id from repmgr_{0}.repl_nodes upstream'.format(clustername)
+        qry += ' where repmgr_testdb2.repl_nodes.id = %s and upstream.name = %s'
+        master.execute(qry, (nodeid, args.upstreamhost))
+        print('I have succesfully set upstream server id')
+    except:
+        print('I could not succesfully set upstream server id')
+
+    try:
+       print('Generating temporary repmgr.conf. Original should be updated by next puppet run.')
+       of = tempfile.NamedTemporaryFile(prefix='repmgr.conf')
+       conffile = of.name
+       repmgrconf['node'] = nodeid
+       for k in sorted(repmgrconf.keys()):
+          of.write('{0}={1}\n'.format(k, repmgrconf[k]))
+       of.flush()
+       print('Temporary repmgr.conf file generated as {0}'.format(conffile))
+    except Exception as e:
+       print(e)
+       print('Could not write temporary config file')
+       sys.exit(-3)
+
+    try:
+        open(args.datadir+'/PG_VERSION')
+        print(args.datadir+'/PG_VERSION already exists, so skipping cloning.')
+    except:
+        print('Cloning from {0} with config file {1} to datadir {2}'.format(args.upstreamhost, conffile, args.datadir))
+        subprocess.check_call([ '/usr/pgpure/postgres/9.6/bin/repmgr', '-f', conffile, '-h', args.upstreamhost, '-U', 'repmgr', '-d', 'repmgr', '-D', args.datadir ,'--copy-external-config-files', '--replication-user', 'replication', 'standby', 'clone' ] )

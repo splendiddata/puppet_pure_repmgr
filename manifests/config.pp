@@ -61,12 +61,6 @@ class pure_repmgr::config
 
   Pure_postgres::Config::Pg_hba <<| tag == $pure_repmgr::repmgr_cluster_name |>>
 
-  if $facts['pure_cloud_nodeid'] {
-    $nodeid = $facts['pure_cloud_nodeid']
-  } else {
-    $nodeid = '100'
-  }
-
   include pure_repmgr::config::ssh
 
   file { $pure_repmgr::params::repmgr_conf:

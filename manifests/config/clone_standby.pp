@@ -24,14 +24,27 @@ define pure_repmgr::config::clone_standby(
 {
 
   $check_cmd = shellquote( '/bin/ssh', '-o', 'NumberOfPasswordPrompts 0', $upstreamhost, 'ls' )
-  $clone_cmd = shellquote( "${pure_postgres::pg_bin_dir}/repmgr", '-f', $pure_repmgr::repmgr_conf, '-h', $upstreamhost,
-                            '-U', 'repmgr', '-d', 'repmgr', '-D', $datadir ,'--copy-external-config-files',
-                            '--replication-user', 'replication', 'standby', 'clone')
+  $clone_cmd = shellquote( "${pure_postgres::pg_bin_dir}/repmgr_clone.py", '-f', $pure_repmgr::repmgr_conf, '-H', $upstreamhost,
+                            '-D', $datadir )
 
-  exec { "exec ${clone_cmd}":
+  #clone.py is a smart script that connects locally, finds replication config, connects to master, checks necessity
+  #for registering, registers, creates a repmgr.conf usable for cloning and runs clone command.
+  #On next run, nodeid will be read as a fact and added to the main repmgr.conf.
+  file { 'clone.py':
+    ensure  => 'file',
+    path    => "${pure_postgres::pg_bin_dir}/repmgr_clone.py",
+    content => epp('pure_repmgr/clone.epp'),
+    owner   => $pure_postgres::postgres_user,
+    group   => $pure_postgres::postgres_group,
+    mode    => '0750',
+  }
+
+  -> exec { 'clone':
     user    => $pure_postgres::postgres_user,
     command => $clone_cmd,
-    unless  => "/bin/test -f ${datadir}/PG_VERSION",
+    unless  => "/bin/test -f '${pure_postgres::pg_pid_file}'",
     onlyif  => $check_cmd,
+    cwd     => $pure_postgres::pg_bin_dir,
   }
+
 }

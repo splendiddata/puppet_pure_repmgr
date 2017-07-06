@@ -2,7 +2,7 @@
 
 #Use lower case for cluster name, since this is part of the schema that repmgr keeps his cluster info in.
 cluster=<%= $pure_repmgr::repmgr_cluster_name %>
-node=<%= $pure_repmgr::config::nodeid %>
+node=<%= $facts[pure_cloud_nodeid] %>
 node_name=<%= $facts[fqdn] %>
 conninfo='host=<%= $facts[fqdn] %> user=repmgr dbname=repmgr'
 use_replication_slots=1
