@@ -1,3 +1,6 @@
+1.1.4: Added custom fact
+- New custom ruby script will add 'pure_postgres_node_count' fact on nodes with postgres installed. 
+
 1.1.3: Changed behaviour of generating new nodeid.
 - Previous solution did clone with nodeid 100, which was also then used in replicationslot name which ended up in recovery.conf.
   That solution didn't work with more than one standby, since they both wanted to replicate using same replication slot.
